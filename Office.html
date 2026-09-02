@@ -194,6 +194,28 @@
 
   body.is-desktop .label { cursor: text; }
 
+  .del {
+    display: none;
+    width: 22px;
+    height: 22px;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    background: none;
+    color: var(--text-dim);
+    font-size: 16px;
+    line-height: 1;
+    border-radius: 6px;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.15s ease, background 0.15s ease, color 0.15s ease;
+  }
+
+  body.is-desktop .del { display: flex; }
+  body.is-desktop li.task:hover .del { opacity: 1; }
+  .del:hover { background: #ef444422; color: #ef4444; }
+
   .label-input {
     font: inherit;
     color: var(--text);
@@ -263,7 +285,7 @@
   <div id="loadingNote" class="loading-note">Loading checklist&hellip;</div>
   <ul class="tasks" id="taskList" style="display:none;"></ul>
 
-  <p class="hint">Drag &#8942;&#8942; to reorder &middot; double-click text to edit &middot; changes sync to every device</p>
+  <p class="hint">Drag &#8942;&#8942; to reorder &middot; double-click text to edit &middot; &times; to delete &middot; changes sync to every device</p>
 
   <button class="reset" id="resetBtn">Reset checklist</button>
 
@@ -372,6 +394,23 @@
       }
 
       li.appendChild(label);
+
+      if (isDesktop) {
+        const del = document.createElement('button');
+        del.className = 'del';
+        del.setAttribute('aria-label', 'Delete task');
+        del.textContent = '\u00D7';
+        del.addEventListener('click', e => {
+          e.stopPropagation();
+          items = items.filter(i => i.id !== item.id);
+          delete doneState[item.id];
+          saveItems();
+          saveDone();
+          render();
+        });
+        li.appendChild(del);
+      }
+
       listEl.appendChild(li);
     });
     updateProgress();
