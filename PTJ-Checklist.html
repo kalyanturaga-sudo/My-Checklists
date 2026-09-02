@@ -1,0 +1,767 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="PT Job">
+<title>PT Job</title>
+<style>
+  :root {
+    --bg: #17151d;
+    --card: #211e29;
+    --card-border: #322e3d;
+    --accent: #6366f1;
+    --text: #f2f1f6;
+    --text-dim: #8b8798;
+    --done: #55506333;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    margin: 0; padding: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
+  }
+  .wrap {
+    max-width: 480px;
+    margin: 0 auto;
+    padding: calc(env(safe-area-inset-top) + 20px) 16px calc(env(safe-area-inset-bottom) + 24px);
+    min-height: 100vh;
+  }
+  header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 4px;
+  }
+  .icon {
+    width: 40px; height: 40px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, #6366f1, #8b5cf6);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px;
+    flex: none;
+  }
+  .titleblock { flex: 1; min-width: 0; }
+  h1 { font-size: 17px; font-weight: 600; margin: 0; }
+  .dateline { font-size: 12px; color: var(--text-dim); margin-top: 2px; }
+  .pill {
+    background: var(--card);
+    border: 1px solid var(--card-border);
+    border-radius: 999px;
+    padding: 4px 10px;
+    font-size: 12px;
+    color: var(--text-dim);
+    flex: none;
+  }
+  .progress-track {
+    height: 4px;
+    background: var(--card);
+    border-radius: 2px;
+    overflow: hidden;
+    margin: 14px 0 18px;
+  }
+  .progress-fill {
+    height: 100%;
+    width: 0%;
+    background: var(--accent);
+    border-radius: 2px;
+    transition: width .2s ease;
+  }
+  #loading {
+    text-align: center;
+    color: var(--text-dim);
+    font-size: 14px;
+    padding: 40px 0;
+  }
+  #groups { display: none; flex-direction: column; gap: 16px; }
+
+  .cat-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 2px;
+    cursor: pointer;
+    position: relative;
+  }
+  .cat-toggle {
+    background: none;
+    border: none;
+    color: var(--text-dim);
+    font-size: 12px;
+    width: 16px;
+    padding: 0;
+    transition: transform .15s;
+    flex: none;
+  }
+  .cat-toggle.expanded { transform: rotate(90deg); }
+  .cat-label {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+    flex: 1;
+    min-width: 0;
+  }
+  .cat-count { font-size: 11px; color: var(--text-dim); flex: none; }
+  .cat-grip {
+    display: none;
+    color: var(--text-dim);
+    cursor: grab;
+    font-size: 13px;
+    flex: none;
+    touch-action: none;
+  }
+  .cat-del {
+    display: none;
+    background: none;
+    border: none;
+    color: var(--text-dim);
+    font-size: 15px;
+    cursor: pointer;
+    flex: none;
+    opacity: 0;
+    transition: opacity .15s;
+  }
+  .cat-header:hover .cat-del { opacity: 1; }
+  body.is-desktop .cat-grip { display: flex; align-items: center; }
+  body.is-desktop .cat-del { display: block; }
+
+  ul.tasklist { list-style: none; margin: 6px 0 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+  li.task {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--card);
+    border: 1px solid var(--card-border);
+    border-radius: 14px;
+    padding: 12px;
+    position: relative;
+  }
+  .grip {
+    display: none;
+    color: var(--text-dim);
+    cursor: grab;
+    font-size: 14px;
+    flex: none;
+    user-select: none;
+    touch-action: none;
+  }
+  body.is-desktop .grip { display: flex; align-items: center; justify-content: center; }
+  .check {
+    width: 22px; height: 22px;
+    min-width: 22px;
+    border-radius: 7px;
+    border: 2px solid var(--accent);
+    display: flex; align-items: center; justify-content: center;
+    flex: none;
+    cursor: pointer;
+  }
+  .check.done { background: var(--accent); }
+  .check svg { width: 13px; height: 13px; display: none; }
+  .check.done svg { display: block; }
+  .label {
+    flex: 1;
+    font-size: 14px;
+    min-width: 0;
+    word-break: break-word;
+    cursor: pointer;
+  }
+  li.task.done .label { color: var(--text-dim); text-decoration: line-through; }
+  .label-input, .cat-input {
+    flex: 1;
+    background: var(--bg);
+    border: 1px solid var(--accent);
+    border-radius: 6px;
+    color: var(--text);
+    font-size: 14px;
+    padding: 4px 6px;
+    font-family: inherit;
+    width: 100%;
+  }
+  .cat-input { font-weight: 600; font-size: 13px; }
+  .del-btn {
+    display: none;
+    background: none;
+    border: none;
+    color: var(--text-dim);
+    font-size: 16px;
+    cursor: pointer;
+    flex: none;
+    padding: 0 2px;
+    opacity: 0;
+    transition: opacity .15s;
+  }
+  li.task:hover .del-btn { opacity: 1; }
+  body.is-desktop .del-btn { display: block; }
+  body.is-desktop li.task.drag-over,
+  body.is-desktop .cat-header.drag-over { border-color: var(--accent); }
+  .cat-header.drag-over { border: 1px dashed var(--accent); border-radius: 8px; }
+
+  .add-task-row {
+    display: none;
+    gap: 8px;
+    margin-top: 8px;
+    border: 1px dashed var(--card-border);
+    border-radius: 12px;
+    padding: 8px 10px;
+    align-items: center;
+  }
+  body.is-desktop .add-task-row { display: flex; }
+  .add-task-row input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    color: var(--text);
+    font-size: 13px;
+    outline: none;
+    font-family: inherit;
+  }
+  .add-task-row input::placeholder { color: var(--text-dim); }
+  .add-task-row button {
+    background: var(--accent);
+    border: none;
+    color: #fff;
+    width: 24px; height: 24px;
+    border-radius: 7px;
+    font-size: 15px;
+    cursor: pointer;
+    flex: none;
+  }
+
+  .add-cat-row {
+    display: none;
+    gap: 8px;
+    margin-top: 14px;
+    border: 1px dashed var(--card-border);
+    border-radius: 14px;
+    padding: 10px 12px;
+    align-items: center;
+  }
+  body.is-desktop .add-cat-row { display: flex; }
+  .add-cat-row input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    color: var(--text);
+    font-size: 14px;
+    outline: none;
+    font-family: inherit;
+  }
+  .add-cat-row input::placeholder { color: var(--text-dim); }
+  .add-cat-row button {
+    background: var(--accent);
+    border: none;
+    color: #fff;
+    width: 26px; height: 26px;
+    border-radius: 8px;
+    font-size: 16px;
+    cursor: pointer;
+    flex: none;
+  }
+
+  .hint {
+    display: none;
+    font-size: 11px;
+    color: var(--text-dim);
+    text-align: center;
+    margin: 12px 0 0;
+  }
+  body.is-desktop .hint { display: block; }
+
+  .reset-row { margin-top: 22px; text-align: center; }
+  #reset-btn {
+    background: var(--card);
+    border: 1px solid var(--card-border);
+    color: var(--text-dim);
+    font-size: 13px;
+    padding: 8px 16px;
+    border-radius: 10px;
+    cursor: pointer;
+  }
+  footer {
+    text-align: center;
+    font-size: 11px;
+    color: var(--text-dim);
+    margin-top: 18px;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="icon">💼</div>
+    <div class="titleblock">
+      <h1>PT Job</h1>
+      <div class="dateline" id="dateline"></div>
+    </div>
+    <div class="pill" id="countLabel">0/0</div>
+  </header>
+
+  <div class="progress-track"><div class="progress-fill" id="progress-fill"></div></div>
+
+  <div id="loading">Loading checklist…</div>
+  <div id="groups"></div>
+
+  <div class="add-cat-row">
+    <input type="text" id="new-cat-input" placeholder="Add a category">
+    <button id="add-cat-btn" aria-label="Add category">+</button>
+  </div>
+
+  <p class="hint">▸ to expand/collapse · drag ⋮⋮ to reorder · double-click text to edit · × to delete · + to add · syncs to every device</p>
+
+  <div class="reset-row">
+    <button id="reset-btn">Reset today's checkmarks</button>
+  </div>
+
+  <footer>PT Job · tap a row to check it off</footer>
+</div>
+
+<script src="storage.js"></script>
+<script>
+(function () {
+  const isDesktop = window.matchMedia('(hover: hover) and (pointer: fine)').matches;
+  if (isDesktop) document.body.classList.add('is-desktop');
+
+  const PREFIX = 'ptj';
+  const ITEMS_KEY = PREFIX + '-checklist-items-v1';
+  const EXPAND_KEY = PREFIX + '-checklist-expand-state';
+
+  function todayStr() {
+    return new Date().toISOString().slice(0, 10);
+  }
+  function doneKeyForToday() {
+    return PREFIX + '-checklist-done-' + todayStr();
+  }
+
+  const DEFAULT_ITEMS = [
+    { id: 'cat-actions', type: 'category', label: '🌙 Actions' },
+    { id: 'email', type: 'task', label: 'Check Email of the Shift' },
+    { id: 'shoes', type: 'task', label: 'Shoes & socks ready' },
+    { id: 'iron', type: 'task', label: 'Iron Clothes (do it in batch if working back2back)' },
+    { id: 'perfume-iron', type: 'task', label: 'Put perfume on ironed clothes' },
+    { id: 'shower', type: 'task', label: 'Eve-shower' },
+    { id: 'shave', type: 'task', label: 'Shaving' },
+
+    { id: 'cat-mindset', type: 'category', label: '🧠 Mindset' },
+    { id: 'audiobook', type: 'task', label: 'Ensure you have a good Audiobook checked out' },
+    { id: 'plan-productive', type: 'task', label: 'Plan what you want to do to keep the shift productive personally' },
+    { id: 'partner', type: 'task', label: 'Check who is your partner' },
+    { id: 'simulate', type: 'task', label: 'Think about whole day — run simulation in mind' },
+    { id: 'weather', type: 'task', label: 'Check weather' },
+    { id: 'umbrella', type: 'task', label: 'Umbrella or jacket needed?' },
+    { id: 'activities', type: 'task', label: 'Plan activities / transportation / timings' },
+    { id: 'docs', type: 'task', label: 'Any documents or emails to review?' },
+
+    { id: 'cat-toupee', type: 'category', label: '🧩 Toupee' },
+    { id: 'toupee', type: 'task', label: 'Toupee' },
+    { id: 'peel', type: 'task', label: 'Peel old stickers/clean residue' },
+    { id: 'tape', type: 'task', label: 'Stick new tape' },
+    { id: 'comb-hair', type: 'task', label: 'Comb hair/clear any debris on the hair' },
+    { id: 'oil', type: 'task', label: 'Slightly oil if it looks dry' },
+    { id: 'extra-tape', type: 'task', label: 'Take extra tape' },
+    { id: 'take-comb', type: 'task', label: 'Take comb' },
+
+    { id: 'cat-tech', type: 'category', label: '🔌 Tech' },
+    { id: 'laptop', type: 'task', label: 'Laptop' },
+    { id: 'watch-charger', type: 'task', label: 'Watch charger' },
+    { id: 'earphones', type: 'task', label: 'Earphones' },
+    { id: 'mouse', type: 'task', label: 'Mouse' },
+
+    { id: 'cat-misc', type: 'category', label: '🎒 Misc' },
+    { id: 'keys', type: 'task', label: 'Keys/Phone/Watch' },
+    { id: 'id-card', type: 'task', label: 'Watch/ ID card' },
+
+    { id: 'cat-shower-kit', type: 'category', label: '🗂 Shower Kit' },
+    { id: 'slippers', type: 'task', label: 'Bathroom slippers' },
+    { id: 'towel', type: 'task', label: 'Towel/Soap/ShowerCap' },
+    { id: 'earbuds', type: 'task', label: 'Earbuds/Comb' },
+    { id: 'clothes', type: 'task', label: 'Pair of clothes/ Pair of Inners' },
+    { id: 'nail', type: 'task', label: 'Nail Cutter/Nose hair scissors' },
+    { id: 'perfume-kit', type: 'task', label: 'Perfume (optional)/Deo/Moisturizer' },
+    { id: 'toothbrush', type: 'task', label: 'Toothbrush/Toothpaste' },
+    { id: 'shave-kit', type: 'task', label: 'Shaving blade/ Shaving Cream' },
+
+    { id: 'cat-hot-extras', type: 'category', label: '🍳 Hot/Extras' },
+    { id: 'coffee', type: 'task', label: 'Take coffee powder (night shift)' },
+    { id: 'bread', type: 'task', label: 'Take round bread for omelette (night shift)' },
+    { id: 'omelette', type: 'task', label: 'Take premade omelette (night shift)' }
+  ];
+
+  let items = [];
+  let doneMap = {};
+  let expandState = {};
+  let dragSrcIndex = null;
+
+  document.getElementById('dateline').textContent = new Date().toLocaleDateString(undefined, {
+    weekday: 'long', month: 'short', day: 'numeric'
+  });
+
+  function normalizeItems(raw) {
+    const out = [];
+    (raw || []).forEach(it => {
+      if (it && it.type === 'group' && Array.isArray(it.subItems)) {
+        out.push({ id: it.id, type: 'category', label: it.label });
+        it.subItems.forEach(sub => out.push({ id: sub.id, type: 'task', label: sub.label }));
+        return;
+      }
+      out.push({
+        id: it.id,
+        type: it.type === 'category' ? 'category' : 'task',
+        label: it.label
+      });
+    });
+    return out;
+  }
+
+  function loadExpandState() {
+    try {
+      const raw = localStorage.getItem(EXPAND_KEY);
+      expandState = raw ? JSON.parse(raw) : {};
+    } catch (e) { expandState = {}; }
+  }
+  function saveExpandState() {
+    try { localStorage.setItem(EXPAND_KEY, JSON.stringify(expandState)); } catch (e) {}
+  }
+  function isExpanded(catId) {
+    return expandState[catId] !== false;
+  }
+
+  function flatTaskIds() { return items.filter(i => i.type === 'task').map(i => i.id); }
+
+  async function saveItems() {
+    await OT.set(ITEMS_KEY, JSON.stringify(items));
+  }
+  async function saveDone() {
+    await OT.set(doneKeyForToday(), JSON.stringify(doneMap));
+  }
+
+  function updateProgress() {
+    const ids = flatTaskIds();
+    const total = ids.length;
+    let done = 0;
+    ids.forEach(id => { if (doneMap[id]) done++; });
+    document.getElementById('countLabel').textContent = done + '/' + total;
+    document.getElementById('progress-fill').style.width = (total ? Math.round(done / total * 100) : 0) + '%';
+  }
+
+  function checkSvg() {
+    return '<svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>';
+  }
+
+  function groupByCategory() {
+    const groups = [];
+    let current = null;
+    items.forEach((item, idx) => {
+      if (item.type === 'category') {
+        current = { cat: item, catIndex: idx, tasks: [] };
+        groups.push(current);
+      } else if (current) {
+        current.tasks.push({ item, index: idx });
+      } else {
+        if (!groups.length || groups[0].cat) {
+          groups.unshift({ cat: null, catIndex: -1, tasks: [] });
+        }
+        groups[0].tasks.push({ item, index: idx });
+      }
+    });
+    return groups;
+  }
+
+  function render() {
+    const wrap = document.getElementById('groups');
+    wrap.innerHTML = '';
+
+    const groups = groupByCategory();
+
+    groups.forEach(group => {
+      const section = document.createElement('div');
+
+      if (group.cat) {
+        const cat = group.cat;
+        const expanded = isExpanded(cat.id);
+        const header = document.createElement('div');
+        header.className = 'cat-header';
+
+        const grip = document.createElement('span');
+        grip.className = 'cat-grip';
+        grip.textContent = '⋮⋮';
+        grip.draggable = isDesktop;
+        grip.addEventListener('dragstart', e => { dragSrcIndex = group.catIndex; e.dataTransfer.effectAllowed = 'move'; });
+
+        const toggle = document.createElement('button');
+        toggle.className = 'cat-toggle' + (expanded ? ' expanded' : '');
+        toggle.textContent = '▸';
+        toggle.setAttribute('aria-label', expanded ? 'Collapse category' : 'Expand category');
+
+        const label = document.createElement('span');
+        label.className = 'cat-label';
+        label.textContent = cat.label;
+
+        const count = document.createElement('span');
+        count.className = 'cat-count';
+        const catDone = group.tasks.filter(t => doneMap[t.item.id]).length;
+        count.textContent = catDone + '/' + group.tasks.length;
+
+        const del = document.createElement('button');
+        del.className = 'cat-del';
+        del.textContent = '×';
+        del.setAttribute('aria-label', 'Delete category');
+        del.addEventListener('click', async (e) => {
+          e.stopPropagation();
+          items.splice(group.catIndex, 1);
+          await saveItems();
+          render();
+        });
+
+        header.appendChild(grip);
+        header.appendChild(toggle);
+        header.appendChild(label);
+        header.appendChild(count);
+        header.appendChild(del);
+
+        header.addEventListener('click', (e) => {
+          if (e.target === del || e.target === grip) return;
+          expandState[cat.id] = !expanded;
+          saveExpandState();
+          render();
+        });
+
+        if (isDesktop) {
+          label.addEventListener('dblclick', (e) => {
+            e.stopPropagation();
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.className = 'cat-input';
+            input.value = cat.label;
+            header.replaceChild(input, label);
+            input.focus();
+            input.select();
+            let done = false;
+            async function commit(save) {
+              if (done) return;
+              done = true;
+              if (save && input.value.trim()) cat.label = input.value.trim();
+              await saveItems();
+              render();
+            }
+            input.addEventListener('keydown', (ev) => {
+              if (ev.key === 'Enter') commit(true);
+              else if (ev.key === 'Escape') commit(false);
+            });
+            input.addEventListener('blur', () => commit(true));
+          });
+
+          header.addEventListener('dragover', (e) => { e.preventDefault(); header.classList.add('drag-over'); });
+          header.addEventListener('dragleave', () => header.classList.remove('drag-over'));
+          header.addEventListener('drop', async (e) => {
+            e.preventDefault();
+            header.classList.remove('drag-over');
+            if (dragSrcIndex === null) return;
+            const target = group.catIndex;
+            if (dragSrcIndex === target) return;
+            const [moved] = items.splice(dragSrcIndex, 1);
+            const insertAt = dragSrcIndex < target ? target - 1 : target;
+            items.splice(insertAt, 0, moved);
+            dragSrcIndex = null;
+            await saveItems();
+            render();
+          });
+        }
+
+        section.appendChild(header);
+      }
+
+      if (!group.cat || isExpanded(group.cat.id)) {
+        const list = document.createElement('ul');
+        list.className = 'tasklist';
+
+        group.tasks.forEach(({ item, index }) => {
+          const li = document.createElement('li');
+          li.className = 'task' + (doneMap[item.id] ? ' done' : '');
+
+          const grip = document.createElement('span');
+          grip.className = 'grip';
+          grip.textContent = '⋮⋮';
+          grip.draggable = isDesktop;
+          grip.addEventListener('dragstart', e => { dragSrcIndex = index; e.dataTransfer.effectAllowed = 'move'; });
+
+          const check = document.createElement('span');
+          check.className = 'check' + (doneMap[item.id] ? ' done' : '');
+          check.innerHTML = checkSvg();
+
+          const label = document.createElement('span');
+          label.className = 'label';
+          label.textContent = item.label;
+
+          async function toggleDone() {
+            doneMap[item.id] = !doneMap[item.id];
+            await saveDone();
+            render();
+          }
+
+          check.addEventListener('click', (e) => { e.stopPropagation(); toggleDone(); });
+          li.addEventListener('click', (e) => {
+            if (e.target === delBtn || e.target === grip) return;
+            toggleDone();
+          });
+
+          if (isDesktop) {
+            label.addEventListener('dblclick', (e) => {
+              e.stopPropagation();
+              const input = document.createElement('input');
+              input.type = 'text';
+              input.className = 'label-input';
+              input.value = item.label;
+              li.replaceChild(input, label);
+              input.focus();
+              input.select();
+              let done = false;
+              async function commit(save) {
+                if (done) return;
+                done = true;
+                if (save && input.value.trim()) item.label = input.value.trim();
+                await saveItems();
+                render();
+              }
+              input.addEventListener('keydown', (ev) => {
+                if (ev.key === 'Enter') commit(true);
+                else if (ev.key === 'Escape') commit(false);
+              });
+              input.addEventListener('blur', () => commit(true));
+            });
+          }
+
+          const delBtn = document.createElement('button');
+          delBtn.className = 'del-btn';
+          delBtn.textContent = '×';
+          delBtn.setAttribute('aria-label', 'Delete task');
+          delBtn.addEventListener('click', async (e) => {
+            e.stopPropagation();
+            items.splice(index, 1);
+            delete doneMap[item.id];
+            await saveItems();
+            await saveDone();
+            render();
+          });
+
+          li.appendChild(grip);
+          li.appendChild(check);
+          li.appendChild(label);
+          li.appendChild(delBtn);
+
+          if (isDesktop) {
+            li.addEventListener('dragover', (e) => { e.preventDefault(); li.classList.add('drag-over'); });
+            li.addEventListener('dragleave', () => li.classList.remove('drag-over'));
+            li.addEventListener('drop', async (e) => {
+              e.preventDefault();
+              li.classList.remove('drag-over');
+              if (dragSrcIndex === null) return;
+              const target = index;
+              if (dragSrcIndex === target) return;
+              const [moved] = items.splice(dragSrcIndex, 1);
+              const insertAt = dragSrcIndex < target ? target - 1 : target;
+              items.splice(insertAt, 0, moved);
+              dragSrcIndex = null;
+              await saveItems();
+              render();
+            });
+          }
+
+          list.appendChild(li);
+        });
+
+        section.appendChild(list);
+
+        if (isDesktop && group.cat) {
+          const addRow = document.createElement('div');
+          addRow.className = 'add-task-row';
+          addRow.style.display = 'flex';
+          const input = document.createElement('input');
+          input.type = 'text';
+          input.placeholder = 'Add a task to ' + group.cat.label.replace(/^\S+\s/, '');
+          const btn = document.createElement('button');
+          btn.textContent = '+';
+          btn.setAttribute('aria-label', 'Add task');
+          async function addTask() {
+            const val = input.value.trim();
+            if (!val) return;
+            const id = 'task-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+            let insertAt = items.length;
+            for (let i = group.catIndex + 1; i < items.length; i++) {
+              if (items[i].type === 'category') { insertAt = i; break; }
+            }
+            items.splice(insertAt, 0, { id: id, type: 'task', label: val });
+            input.value = '';
+            await saveItems();
+            render();
+          }
+          btn.addEventListener('click', addTask);
+          input.addEventListener('keydown', (e) => { if (e.key === 'Enter') addTask(); });
+          addRow.appendChild(input);
+          addRow.appendChild(btn);
+          section.appendChild(addRow);
+        }
+      }
+
+      wrap.appendChild(section);
+    });
+
+    updateProgress();
+  }
+
+  document.getElementById('reset-btn').addEventListener('click', async () => {
+    doneMap = {};
+    await saveDone();
+    render();
+  });
+
+  if (isDesktop) {
+    const input = document.getElementById('new-cat-input');
+    const btn = document.getElementById('add-cat-btn');
+    async function addCategory() {
+      const val = input.value.trim();
+      if (!val) return;
+      const id = 'cat-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+      items.push({ id: id, type: 'category', label: val });
+      input.value = '';
+      await saveItems();
+      render();
+    }
+    btn.addEventListener('click', addCategory);
+    input.addEventListener('keydown', (e) => { if (e.key === 'Enter') addCategory(); });
+  }
+
+  loadExpandState();
+
+  OT.onReady(async () => {
+    const rawItems = await OT.get(ITEMS_KEY);
+    if (rawItems) {
+      items = normalizeItems(JSON.parse(rawItems));
+    } else {
+      items = DEFAULT_ITEMS.slice();
+      await saveItems();
+    }
+
+    const rawDone = await OT.get(doneKeyForToday());
+    doneMap = rawDone ? JSON.parse(rawDone) : {};
+
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('groups').style.display = 'flex';
+    render();
+  });
+
+  OT.onSync(async () => {
+    const rawItems = await OT.get(ITEMS_KEY);
+    if (rawItems) items = normalizeItems(JSON.parse(rawItems));
+
+    const rawDone = await OT.get(doneKeyForToday());
+    doneMap = rawDone ? JSON.parse(rawDone) : {};
+
+    render();
+  });
+})();
+</script>
+</body>
+</html>
