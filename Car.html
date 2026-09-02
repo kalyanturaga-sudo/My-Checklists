@@ -178,12 +178,12 @@
 
   .box.sub { width: 19px; height: 19px; border-radius: 5px; }
 
-  li.task.done .box, .subrow.done .box { background: var(--accent); }
+  li.task.done .box { background: var(--accent); }
 
   .box svg { width: 13px; height: 13px; opacity: 0; transition: opacity 0.1s ease; }
   .box.sub svg { width: 11px; height: 11px; }
 
-  li.task.done .box svg, .subrow.done .box svg { opacity: 1; }
+  li.task.done .box svg { opacity: 1; }
 
   .label { font-size: 16px; line-height: 1.35; padding-top: 1px; flex: 1; min-width: 0; }
 
@@ -259,20 +259,33 @@
 
   .add-row button:disabled { opacity: 0.4; cursor: default; }
 
-  /* Grouped sub-checklist (clothing) */
-  .group-wrap { display: flex; flex-direction: column; gap: 10px; width: 100%; min-width: 0; }
-  .group-label { font-size: 16px; line-height: 1.35; padding-top: 1px; }
-  .sublist { list-style: none; margin: 2px 0 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
-
-  .subrow {
-    display: flex;
+  .indent-btn {
+    display: none;
+    width: 18px;
+    height: 22px;
+    flex-shrink: 0;
     align-items: center;
-    gap: 10px;
-    padding-left: 4px;
+    justify-content: center;
+    border: none;
+    background: none;
+    color: var(--text-dim);
+    font-size: 13px;
+    border-radius: 5px;
+    cursor: pointer;
+    margin-top: 1px;
   }
 
-  .sub-label { font-size: 14.5px; color: var(--text-dim); }
-  .subrow.done .sub-label { text-decoration: line-through; }
+  body.is-desktop .indent-btn { display: flex; }
+  .indent-btn:hover { background: var(--card-border); color: var(--text); }
+  .indent-btn.spacer { visibility: hidden; }
+
+  li.task.sub {
+    margin-left: 28px;
+    background: #1b1922;
+  }
+
+  li.task.sub .box { width: 19px; height: 19px; border-radius: 5px; }
+  li.task.sub .label { font-size: 14.5px; color: var(--text-dim); }
 
   .hint {
     text-align: center;
@@ -326,7 +339,7 @@
     <button id="addBtn" aria-label="Add task">+</button>
   </div>
 
-  <p class="hint">Drag &#8942;&#8942; to reorder &middot; double-click text to edit &middot; &times; to delete &middot; + to add &middot; changes sync to every device</p>
+  <p class="hint">&#9656; to make subtask &middot; drag &#8942;&#8942; to reorder &middot; double-click text to edit &middot; &times; to delete &middot; + to add &middot; syncs to every device</p>
 
   <button class="reset" id="resetBtn">Reset checklist</button>
 
@@ -338,19 +351,19 @@
 <script>
   const CHECK_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>';
 
-  // 'text' = a question answered with free text (destination). 'clothing' is a
-  // group with its own sub-checkboxes. Everything else is a flat task.
+  // 'text' = a question answered with free text (destination), always top-level.
+  // Everything else is a 'task'; sub:true means it's indented under the
+  // nearest preceding top-level item (toggle with the ▸ / ◂ button).
   const DEFAULT_ITEMS = [
-    { id: 'destination', type: 'text', label: "What's the destination? Why are you going?" },
-    { id: 'clothing', type: 'group', label: 'Wearing appropriate clothes', subItems: [
-        { id: 'shoes',    label: 'Shoes' },
-        { id: 'pants',    label: 'Pants' },
-        { id: 'slippers', label: 'Slippers' },
-      ] },
-    { id: 'water-bottle',   type: 'task', label: 'Water bottle' },
-    { id: 'shopping-bags',  type: 'task', label: 'Shopping bags' },
-    { id: 'audiobook',      type: 'task', label: 'Audiobook ready to play' },
-    { id: 'petrol',         type: 'task', label: 'Petrol in the car' },
+    { id: 'destination',    type: 'text', label: "What's the destination? Why are you going?" },
+    { id: 'clothing',       type: 'task', label: 'Wearing appropriate clothes', sub: false },
+    { id: 'shoes',          type: 'task', label: 'Shoes',    sub: true },
+    { id: 'pants',          type: 'task', label: 'Pants',    sub: true },
+    { id: 'slippers',       type: 'task', label: 'Slippers', sub: true },
+    { id: 'water-bottle',   type: 'task', label: 'Water bottle',   sub: false },
+    { id: 'shopping-bags',  type: 'task', label: 'Shopping bags',  sub: false },
+    { id: 'audiobook',      type: 'task', label: 'Audiobook ready to play', sub: false },
+    { id: 'petrol',         type: 'task', label: 'Petrol in the car', sub: false },
   ];
 
   const ITEMS_KEY = 'car-checklist-items-v1';
@@ -375,12 +388,7 @@
   let dragId = null;
 
   function flatIds() {
-    const ids = [];
-    items.forEach(it => {
-      if (it.type === 'group') it.subItems.forEach(s => ids.push(it.id + ':' + s.id));
-      else ids.push(it.id);
-    });
-    return ids;
+    return items.map(it => it.id);
   }
 
   async function saveItems() { await OT.set(ITEMS_KEY, JSON.stringify(items)); }
@@ -390,9 +398,9 @@
   function render() {
     listEl.innerHTML = '';
 
-    items.forEach(item => {
+    items.forEach((item, idx) => {
       const li = document.createElement('li');
-      li.className = 'task';
+      li.className = 'task' + (item.sub ? ' sub' : '');
       li.dataset.id = item.id;
 
       if (isDesktop) {
@@ -422,6 +430,22 @@
           saveItems();
           render();
         });
+
+        const indentBtn = document.createElement('button');
+        if (idx === 0 || item.type === 'text') {
+          indentBtn.className = 'indent-btn spacer';
+          indentBtn.textContent = '\u25B8';
+        } else {
+          indentBtn.className = 'indent-btn';
+          indentBtn.textContent = item.sub ? '\u25C2' : '\u25B8';
+          indentBtn.setAttribute('aria-label', item.sub ? 'Make top-level task' : 'Make subtask');
+          indentBtn.addEventListener('click', () => {
+            item.sub = !item.sub;
+            saveItems();
+            render();
+          });
+        }
+        li.appendChild(indentBtn);
       }
 
       if (item.type === 'text') {
@@ -459,63 +483,11 @@
 
         li.appendChild(wrap);
 
-      } else if (item.type === 'group') {
-        const allDone = item.subItems.every(s => doneState[item.id + ':' + s.id]);
-        li.classList.toggle('done', allDone);
-
-        const box = document.createElement('span');
-        box.className = 'box';
-        box.innerHTML = CHECK_SVG;
-        box.addEventListener('click', () => {
-          const newVal = !allDone;
-          item.subItems.forEach(s => { doneState[item.id + ':' + s.id] = newVal; });
-          saveDone();
-          render();
-        });
-        li.appendChild(box);
-
-        const groupWrap = document.createElement('div');
-        groupWrap.className = 'group-wrap';
-
-        const label = document.createElement('div');
-        label.className = 'group-label';
-        label.textContent = item.label;
-        groupWrap.appendChild(label);
-
-        const sub = document.createElement('ul');
-        sub.className = 'sublist';
-        item.subItems.forEach(s => {
-          const key = item.id + ':' + s.id;
-          const row = document.createElement('li');
-          row.className = 'subrow' + (doneState[key] ? ' done' : '');
-
-          const sbox = document.createElement('span');
-          sbox.className = 'box sub';
-          sbox.innerHTML = CHECK_SVG;
-          sbox.addEventListener('click', () => {
-            doneState[key] = !doneState[key];
-            saveDone();
-            render();
-          });
-          row.appendChild(sbox);
-
-          const slabel = document.createElement('span');
-          slabel.className = 'sub-label';
-          slabel.textContent = s.label;
-          row.appendChild(slabel);
-
-          if (!isDesktop) row.addEventListener('click', () => sbox.click());
-
-          sub.appendChild(row);
-        });
-        groupWrap.appendChild(sub);
-        li.appendChild(groupWrap);
-
       } else {
         li.classList.toggle('done', !!doneState[item.id]);
 
         const box = document.createElement('span');
-        box.className = 'box';
+        box.className = 'box' + (item.sub ? ' sub' : '');
         box.innerHTML = CHECK_SVG;
         box.addEventListener('click', () => toggleDone(item.id));
         li.appendChild(box);
@@ -604,7 +576,7 @@
     const val = addInput.value.trim();
     if (!val) return;
     const id = 'task-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
-    items.push({ id, type: 'task', label: val });
+    items.push({ id, type: 'task', label: val, sub: false });
     saveItems();
     addInput.value = '';
     render();
@@ -619,7 +591,21 @@
     const savedText  = await OT.get(textKeyForToday());
 
     if (savedItems) {
-      try { items = JSON.parse(savedItems); } catch (e) {}
+      try {
+        const parsed = JSON.parse(savedItems);
+        // Migrate any old group/subItems format (from before the indent toggle)
+        // into flat items with sub:true, so nothing is lost on upgrade.
+        items = [];
+        parsed.forEach(it => {
+          if (it.type === 'group' && Array.isArray(it.subItems)) {
+            items.push({ id: it.id, type: 'task', label: it.label, sub: false });
+            it.subItems.forEach(s => items.push({ id: s.id, type: 'task', label: s.label, sub: true }));
+          } else {
+            if (typeof it.sub !== 'boolean') it.sub = false;
+            items.push(it);
+          }
+        });
+      } catch (e) {}
     } else {
       await saveItems();
     }

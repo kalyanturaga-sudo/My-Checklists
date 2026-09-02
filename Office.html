@@ -152,6 +152,35 @@
   body.is-desktop li.task { cursor: default; }
   .grip:active { cursor: grabbing; }
 
+  .indent-btn {
+    display: none;
+    width: 18px;
+    height: 22px;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    background: none;
+    color: var(--text-dim);
+    font-size: 13px;
+    border-radius: 5px;
+    cursor: pointer;
+    margin-top: 1px;
+  }
+
+  body.is-desktop .indent-btn { display: flex; }
+  .indent-btn:hover { background: var(--card-border); color: var(--text); }
+  .indent-btn.spacer { visibility: hidden; }
+
+  li.task.sub {
+    margin-left: 28px;
+    background: #1b1922;
+  }
+
+  li.task.sub .box { width: 19px; height: 19px; border-radius: 5px; }
+  li.task.sub .label { font-size: 14.5px; color: var(--text-dim); }
+  li.task.sub.done .label { color: var(--text-dim); }
+
   .box {
     width: 22px;
     height: 22px;
@@ -331,7 +360,7 @@
     <button id="addBtn" aria-label="Add task">+</button>
   </div>
 
-  <p class="hint">Drag &#8942;&#8942; to reorder &middot; double-click text to edit &middot; &times; to delete &middot; + to add &middot; changes sync to every device</p>
+  <p class="hint">&#9656; to make subtask &middot; drag &#8942;&#8942; to reorder &middot; double-click text to edit &middot; &times; to delete &middot; + to add &middot; syncs to every device</p>
 
   <button class="reset" id="resetBtn">Reset checklist</button>
 
@@ -344,15 +373,15 @@
   const CHECK_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>';
 
   const DEFAULT_ITEMS = [
-    { id: 'clear-floor',      label: 'Clear the floor' },
-    { id: 'clean-table',      label: 'Clean the table' },
-    { id: 'wet-clean',        label: 'Wet clean monitors, keyboard, mouse, table top' },
-    { id: 'water-bottle',     label: 'Water bottle' },
-    { id: 'munchings',        label: 'Munchings' },
-    { id: 'headphones-ipad',  label: 'Charged headphones and iPad' },
-    { id: 'toupee',           label: 'Toupee \u2013 wear it' },
-    { id: 'potty',            label: 'Go to potty' },
-    { id: 'ipad-desk',        label: 'Put iPad on the desk' },
+    { id: 'clear-floor',      label: 'Clear the floor',      sub: false },
+    { id: 'clean-table',      label: 'Clean the table',      sub: false },
+    { id: 'wet-clean',        label: 'Wet clean monitors, keyboard, mouse, table top', sub: false },
+    { id: 'water-bottle',     label: 'Water bottle',         sub: false },
+    { id: 'munchings',        label: 'Munchings',            sub: false },
+    { id: 'headphones-ipad',  label: 'Charged headphones and iPad', sub: false },
+    { id: 'toupee',           label: 'Toupee \u2013 wear it', sub: false },
+    { id: 'potty',            label: 'Go to potty',          sub: false },
+    { id: 'ipad-desk',        label: 'Put iPad on the desk', sub: false },
   ];
 
   // Keys stored in the shared Drive file (my-checklists-data.json).
@@ -386,9 +415,9 @@
 
   function render() {
     listEl.innerHTML = '';
-    items.forEach(item => {
+    items.forEach((item, idx) => {
       const li = document.createElement('li');
-      li.className = 'task' + (doneState[item.id] ? ' done' : '');
+      li.className = 'task' + (doneState[item.id] ? ' done' : '') + (item.sub ? ' sub' : '');
       li.dataset.id = item.id;
 
       if (isDesktop) {
@@ -421,6 +450,22 @@
           saveItems();
           render();
         });
+
+        const indentBtn = document.createElement('button');
+        if (idx === 0) {
+          indentBtn.className = 'indent-btn spacer';
+          indentBtn.textContent = '\u25B8';
+        } else {
+          indentBtn.className = 'indent-btn';
+          indentBtn.textContent = item.sub ? '\u25C2' : '\u25B8';
+          indentBtn.setAttribute('aria-label', item.sub ? 'Make top-level task' : 'Make subtask');
+          indentBtn.addEventListener('click', () => {
+            item.sub = !item.sub;
+            saveItems();
+            render();
+          });
+        }
+        li.appendChild(indentBtn);
       }
 
       const box = document.createElement('span');
@@ -512,7 +557,7 @@
     const val = addInput.value.trim();
     if (!val) return;
     const id = 'task-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
-    items.push({ id, label: val });
+    items.push({ id, label: val, sub: false });
     saveItems();
     addInput.value = '';
     render();
@@ -526,7 +571,10 @@
     const savedDone = await OT.get(doneKeyForToday());
 
     if (savedItems) {
-      try { items = JSON.parse(savedItems); } catch (e) {}
+      try {
+        items = JSON.parse(savedItems);
+        items.forEach(i => { if (typeof i.sub !== 'boolean') i.sub = false; });
+      } catch (e) {}
     } else {
       // First run ever: seed Drive with the defaults so every device starts the same.
       await saveItems();
