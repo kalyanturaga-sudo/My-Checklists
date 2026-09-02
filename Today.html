@@ -318,8 +318,16 @@
   const ITEMS_KEY = PREFIX + '-checklist-items-v1';
   const EVENTS_KEY = PREFIX + '-checklist-events-v1';
 
+  const SYDNEY_TZ = 'Australia/Sydney';
+  function sydneyDateStr(date) {
+    // Returns YYYY-MM-DD for the given Date, as it falls in Sydney local time,
+    // regardless of what timezone the device itself is set to.
+    return new Intl.DateTimeFormat('en-CA', {
+      timeZone: SYDNEY_TZ, year: 'numeric', month: '2-digit', day: '2-digit'
+    }).format(date);
+  }
   function todayStr() {
-    return new Date().toISOString().slice(0, 10);
+    return sydneyDateStr(new Date());
   }
   function doneKeyForToday() {
     return PREFIX + '-checklist-done-' + todayStr();
@@ -584,13 +592,23 @@
     return new Date(Number(y), Number(mo) - 1, Number(d), Number(h || 0), Number(mi || 0), Number(s || 0));
   }
 
+  async function cleanExpiredEvents() {
+    if (!events || events.length === 0) return;
+    const today = todayStr();
+    const stillRelevant = events.some(ev => ev.dtstart && sydneyDateStr(new Date(ev.dtstart)) === today);
+    if (!stillRelevant) {
+      events = [];
+      await saveEvents();
+      document.getElementById('upload-label-text').textContent = 'Upload .ics file';
+    }
+  }
+
   function renderEvents() {
     const box = document.getElementById('events-box');
     box.innerHTML = '';
-    const now = new Date();
-    const todaysDateStr = now.toDateString();
+    const today = todayStr(); // YYYY-MM-DD in Sydney time
     const todays = (events || [])
-      .filter(ev => ev.dtstart && new Date(ev.dtstart).toDateString() === todaysDateStr)
+      .filter(ev => ev.dtstart && sydneyDateStr(new Date(ev.dtstart)) === today)
       .sort((a, b) => new Date(a.dtstart) - new Date(b.dtstart));
 
     if (todays.length === 0) {
@@ -646,6 +664,7 @@
 
     const rawEvents = await OT.get(EVENTS_KEY);
     events = rawEvents ? JSON.parse(rawEvents) : [];
+    await cleanExpiredEvents();
 
     document.getElementById('loading').style.display = 'none';
     document.getElementById('list').style.display = 'flex';
@@ -662,6 +681,7 @@
 
     const rawEvents = await OT.get(EVENTS_KEY);
     events = rawEvents ? JSON.parse(rawEvents) : [];
+    await cleanExpiredEvents();
 
     render();
     renderEvents();
