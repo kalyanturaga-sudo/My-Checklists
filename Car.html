@@ -99,32 +99,21 @@
     transition: width 0.25s ease;
   }
 
-  /* Destination tag */
-  .tag-row {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    background: var(--card);
+  /* Text-answer item (destination question), lives as the first list card */
+  .text-wrap { display: flex; flex-direction: column; gap: 8px; flex: 1; min-width: 0; }
+  .text-ans {
+    background: var(--bg);
     border: 1px solid var(--card-border);
-    border-radius: 12px;
-    padding: 10px 12px;
-    margin: 0 4px 18px;
-  }
-
-  .tag-row .icn { font-size: 15px; flex-shrink: 0; }
-
-  .tag-row input {
-    flex: 1;
-    min-width: 0;
-    background: none;
-    border: none;
+    border-radius: 8px;
+    padding: 8px 10px;
     color: var(--text);
-    font-size: 15px;
+    font-size: 14.5px;
     font-family: inherit;
     outline: none;
+    width: 100%;
   }
-
-  .tag-row input::placeholder { color: var(--text-dim); }
+  .text-ans:focus { border-color: var(--accent); }
+  .text-ans::placeholder { color: var(--text-dim); }
 
   ul.tasks {
     list-style: none;
@@ -288,11 +277,6 @@
 
   <div class="bar-track"><div class="bar-fill" id="barFill"></div></div>
 
-  <div class="tag-row">
-    <span class="icn">📍</span>
-    <input id="destInput" type="text" placeholder="Where are you going?" autocomplete="off">
-  </div>
-
   <div id="loadingNote" class="loading-note">Loading checklist&hellip;</div>
   <ul class="tasks" id="taskList" style="display:none;"></ul>
 
@@ -308,9 +292,10 @@
 <script>
   const CHECK_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>';
 
-  // 'clothing' is a group: one parent row with its own sub-checkboxes.
-  // Everything else is a flat task, same pattern as Office.html.
+  // 'text' = a question answered with free text (destination). 'clothing' is a
+  // group with its own sub-checkboxes. Everything else is a flat task.
   const DEFAULT_ITEMS = [
+    { id: 'destination', type: 'text', label: "What's the destination? Why are you going?" },
     { id: 'clothing', type: 'group', label: 'Wearing appropriate clothes', subItems: [
         { id: 'shoes',    label: 'Shoes' },
         { id: 'pants',    label: 'Pants' },
@@ -325,7 +310,7 @@
   const ITEMS_KEY = 'car-checklist-items-v1';
   const todayStamp = () => new Date().toISOString().slice(0, 10);
   const doneKeyForToday = () => 'car-checklist-done-' + todayStamp();
-  const destKeyForToday = () => 'car-checklist-dest-' + todayStamp();
+  const textKeyForToday = () => 'car-checklist-text-' + todayStamp();
 
   const isDesktop = window.matchMedia('(hover: hover) and (pointer: fine)').matches;
   if (isDesktop) document.body.classList.add('is-desktop');
@@ -334,13 +319,13 @@
     new Date().toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 
   let items = JSON.parse(JSON.stringify(DEFAULT_ITEMS));
-  let doneState = {}; // flat map: task id -> bool, or "clothing:shoes" -> bool for sub items
+  let doneState = {}; // flat map: task/text id -> bool, or "clothing:shoes" -> bool for sub items
+  let textAnswers = {}; // text-item id -> the typed answer
 
   const listEl = document.getElementById('taskList');
   const loadingNote = document.getElementById('loadingNote');
   const countLabel = document.getElementById('countLabel');
   const barFill = document.getElementById('barFill');
-  const destInput = document.getElementById('destInput');
   let dragId = null;
 
   function flatIds() {
@@ -354,7 +339,7 @@
 
   async function saveItems() { await OT.set(ITEMS_KEY, JSON.stringify(items)); }
   async function saveDone()  { await OT.set(doneKeyForToday(), JSON.stringify(doneState)); }
-  async function saveDest()  { await OT.set(destKeyForToday(), destInput.value); }
+  async function saveText()  { await OT.set(textKeyForToday(), JSON.stringify(textAnswers)); }
 
   function render() {
     listEl.innerHTML = '';
@@ -393,7 +378,42 @@
         });
       }
 
-      if (item.type === 'group') {
+      if (item.type === 'text') {
+        li.classList.toggle('done', !!doneState[item.id]);
+
+        const box = document.createElement('span');
+        box.className = 'box';
+        box.innerHTML = CHECK_SVG;
+        li.appendChild(box);
+
+        const wrap = document.createElement('div');
+        wrap.className = 'text-wrap';
+
+        const label = document.createElement('span');
+        label.className = 'label';
+        label.textContent = item.label;
+        if (isDesktop) label.addEventListener('dblclick', () => startEdit(label, item));
+        wrap.appendChild(label);
+
+        const ans = document.createElement('input');
+        ans.type = 'text';
+        ans.className = 'text-ans';
+        ans.placeholder = 'Type your answer\u2026';
+        ans.value = textAnswers[item.id] || '';
+        ans.addEventListener('click', e => e.stopPropagation());
+        ans.addEventListener('blur', () => {
+          textAnswers[item.id] = ans.value;
+          doneState[item.id] = ans.value.trim().length > 0;
+          saveText();
+          saveDone();
+          li.classList.toggle('done', !!doneState[item.id]);
+        });
+        ans.addEventListener('keydown', e => { if (e.key === 'Enter') ans.blur(); });
+        wrap.appendChild(ans);
+
+        li.appendChild(wrap);
+
+      } else if (item.type === 'group') {
         const allDone = item.subItems.every(s => doneState[item.id + ':' + s.id]);
         li.classList.toggle('done', allDone);
 
@@ -531,13 +551,10 @@
     render();
   });
 
-  destInput.addEventListener('blur', saveDest);
-  destInput.addEventListener('keydown', e => { if (e.key === 'Enter') destInput.blur(); });
-
   async function loadFromDrive() {
     const savedItems = await OT.get(ITEMS_KEY);
     const savedDone  = await OT.get(doneKeyForToday());
-    const savedDest  = await OT.get(destKeyForToday());
+    const savedText  = await OT.get(textKeyForToday());
 
     if (savedItems) {
       try { items = JSON.parse(savedItems); } catch (e) {}
@@ -545,7 +562,7 @@
       await saveItems();
     }
     if (savedDone) { try { doneState = JSON.parse(savedDone); } catch (e) {} }
-    if (savedDest) { destInput.value = savedDest; }
+    if (savedText) { try { textAnswers = JSON.parse(savedText); } catch (e) {} }
 
     loadingNote.style.display = 'none';
     listEl.style.display = '';
