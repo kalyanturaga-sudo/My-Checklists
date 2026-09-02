@@ -218,6 +218,47 @@
   body.is-desktop li.task:hover .del { opacity: 1; }
   .del:hover { background: #ef444422; color: #ef4444; }
 
+  .add-row {
+    display: none;
+    align-items: center;
+    gap: 8px;
+    background: var(--card);
+    border: 1px dashed var(--card-border);
+    border-radius: 14px;
+    padding: 10px 12px;
+    margin-top: 10px;
+  }
+
+  body.is-desktop .add-row { display: flex; }
+
+  .add-row input {
+    flex: 1;
+    min-width: 0;
+    background: none;
+    border: none;
+    color: var(--text);
+    font-size: 15px;
+    font-family: inherit;
+    outline: none;
+  }
+
+  .add-row input::placeholder { color: var(--text-dim); }
+
+  .add-row button {
+    width: 26px;
+    height: 26px;
+    border-radius: 7px;
+    border: none;
+    background: var(--accent);
+    color: #fff;
+    font-size: 16px;
+    line-height: 1;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+
+  .add-row button:disabled { opacity: 0.4; cursor: default; }
+
   /* Grouped sub-checklist (clothing) */
   .group-wrap { display: flex; flex-direction: column; gap: 10px; width: 100%; min-width: 0; }
   .group-label { font-size: 16px; line-height: 1.35; padding-top: 1px; }
@@ -280,7 +321,12 @@
   <div id="loadingNote" class="loading-note">Loading checklist&hellip;</div>
   <ul class="tasks" id="taskList" style="display:none;"></ul>
 
-  <p class="hint">Drag &#8942;&#8942; to reorder &middot; double-click text to edit &middot; &times; to delete &middot; changes sync to every device</p>
+  <div class="add-row">
+    <input id="addInput" type="text" placeholder="Add a task&hellip;" autocomplete="off">
+    <button id="addBtn" aria-label="Add task">+</button>
+  </div>
+
+  <p class="hint">Drag &#8942;&#8942; to reorder &middot; double-click text to edit &middot; &times; to delete &middot; + to add &middot; changes sync to every device</p>
 
   <button class="reset" id="resetBtn">Reset checklist</button>
 
@@ -550,6 +596,22 @@
     saveDone();
     render();
   });
+
+  const addInput = document.getElementById('addInput');
+  const addBtn = document.getElementById('addBtn');
+
+  function addTask() {
+    const val = addInput.value.trim();
+    if (!val) return;
+    const id = 'task-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+    items.push({ id, type: 'task', label: val });
+    saveItems();
+    addInput.value = '';
+    render();
+  }
+
+  addBtn.addEventListener('click', addTask);
+  addInput.addEventListener('keydown', e => { if (e.key === 'Enter') addTask(); });
 
   async function loadFromDrive() {
     const savedItems = await OT.get(ITEMS_KEY);
