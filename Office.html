@@ -215,6 +215,13 @@
 
   body.is-desktop .hint { display: block; }
 
+  .loading-note {
+    text-align: center;
+    color: var(--text-dim);
+    font-size: 13px;
+    padding: 30px 0;
+  }
+
   footer {
     text-align: center;
     color: var(--text-dim);
@@ -253,9 +260,10 @@
 
   <div class="bar-track"><div class="bar-fill" id="barFill"></div></div>
 
-  <ul class="tasks" id="taskList"></ul>
+  <div id="loadingNote" class="loading-note">Loading checklist&hellip;</div>
+  <ul class="tasks" id="taskList" style="display:none;"></ul>
 
-  <p class="hint">Drag &#8942;&#8942; to reorder &middot; double-click text to edit</p>
+  <p class="hint">Drag &#8942;&#8942; to reorder &middot; double-click text to edit &middot; changes sync to every device</p>
 
   <button class="reset" id="resetBtn">Reset checklist</button>
 
@@ -263,6 +271,7 @@
 
 </div>
 
+<script src="storage.js"></script>
 <script>
   const CHECK_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>';
 
@@ -278,45 +287,34 @@
     { id: 'ipad-desk',        label: 'Put iPad on the desk' },
   ];
 
+  // Keys stored in the shared Drive file (my-checklists-data.json).
+  // Items (labels/order) are shared indefinitely. Done-state is keyed by
+  // today's date, so it resets automatically each day on every device.
   const ITEMS_KEY = 'office-checklist-items-v1';
-  const doneKeyForToday = () => 'office-checklist-done-' + new Date().toDateString();
+  const doneKeyForToday = () => 'office-checklist-done-' + new Date().toISOString().slice(0, 10);
 
-  // Desktop = has a real mouse (hover + fine pointer). iPhone/touch never
-  // matches this, so editing/reordering only ever appears on the web version.
   const isDesktop = window.matchMedia('(hover: hover) and (pointer: fine)').matches;
   if (isDesktop) document.body.classList.add('is-desktop');
 
   document.getElementById('today').textContent =
     new Date().toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 
-  function loadItems() {
-    try {
-      const saved = JSON.parse(localStorage.getItem(ITEMS_KEY));
-      if (Array.isArray(saved) && saved.length) return saved;
-    } catch (e) {}
-    return DEFAULT_ITEMS.slice();
-  }
-
-  function saveItems() {
-    localStorage.setItem(ITEMS_KEY, JSON.stringify(items));
-  }
-
-  function loadDone() {
-    try { return JSON.parse(localStorage.getItem(doneKeyForToday())) || {}; }
-    catch (e) { return {}; }
-  }
-
-  function saveDone() {
-    localStorage.setItem(doneKeyForToday(), JSON.stringify(doneState));
-  }
-
-  let items = loadItems();
-  let doneState = loadDone();
+  let items = DEFAULT_ITEMS.slice();
+  let doneState = {};
 
   const listEl = document.getElementById('taskList');
+  const loadingNote = document.getElementById('loadingNote');
   const countLabel = document.getElementById('countLabel');
   const barFill = document.getElementById('barFill');
   let dragId = null;
+
+  async function saveItems() {
+    await OT.set(ITEMS_KEY, JSON.stringify(items));
+  }
+
+  async function saveDone() {
+    await OT.set(doneKeyForToday(), JSON.stringify(doneState));
+  }
 
   function render() {
     listEl.innerHTML = '';
@@ -368,9 +366,8 @@
       label.textContent = item.label;
 
       if (isDesktop) {
-        label.addEventListener('dblclick', () => startEdit(li, label, item));
+        label.addEventListener('dblclick', () => startEdit(label, item));
       } else {
-        // iPhone / touch: whole row is a big tap target, read-only text
         li.addEventListener('click', () => toggleDone(item.id));
       }
 
@@ -380,7 +377,7 @@
     updateProgress();
   }
 
-  function startEdit(li, label, item) {
+  function startEdit(label, item) {
     const input = document.createElement('input');
     input.type = 'text';
     input.className = 'label-input';
@@ -423,7 +420,30 @@
     render();
   });
 
-  render();
+  async function loadFromDrive() {
+    const savedItems = await OT.get(ITEMS_KEY);
+    const savedDone = await OT.get(doneKeyForToday());
+
+    if (savedItems) {
+      try { items = JSON.parse(savedItems); } catch (e) {}
+    } else {
+      // First run ever: seed Drive with the defaults so every device starts the same.
+      await saveItems();
+    }
+    if (savedDone) {
+      try { doneState = JSON.parse(savedDone); } catch (e) {}
+    }
+
+    loadingNote.style.display = 'none';
+    listEl.style.display = '';
+    render();
+  }
+
+  // Renders once from whatever's cached locally (works instantly, even
+  // offline), then re-renders when the authoritative Drive data lands —
+  // and again any time it changes, e.g. edited on another device.
+  OT.onReady(loadFromDrive);
+  OT.onSync(loadFromDrive);
 </script>
 </body>
 </html>
