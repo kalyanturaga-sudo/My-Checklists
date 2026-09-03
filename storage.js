@@ -985,12 +985,64 @@
      INIT
   ══════════════════════════════════════════════════════════ */
 
+  /* v5.8: MOBILE = LOCAL-ONLY, NO AUTH, EVER.
+     ------------------------------------------------------------
+     Touch devices (phones) never attempt Drive sign-in, never show
+     the "Sign in with Google" banner or the sync dot, and never send
+     a single request to Google. They just render straight from this
+     device's local mirror (ONETRACK_LOCAL_MIRROR in localStorage) —
+     the same offline fallback storage.js already had, just made the
+     ONLY path on touch devices instead of a fallback while waiting
+     on a renewal.
+
+     Checkbox taps still work exactly as before: OT.set() still
+     writes into the mirror, still updates the UI immediately. They
+     just never leave the phone, because _accessToken/_fileId are
+     simply never populated in this mode, so _writeToFile()'s Drive
+     branch (`if (!_fileId || !_accessToken) return;`) always short-
+     circuits after the local write. One-way, by construction.
+
+     Desktop (mouse/trackpad — where items actually get authored and
+     re-ordered) is completely untouched below: full Drive sync,
+     silent renewal, banner-if-it-genuinely-fails, same as v5.7.
+
+     Trade-off, worth knowing: a phone that has never once been
+     signed in only ever sees DEFAULT_ITEMS (seeded locally) plus
+     whatever it has typed in itself — it will not pick up item/label
+     edits made on desktop. That's expected here since phones are
+     read/tap-only in this app; if a checklist's item list changes,
+     that's a desktop edit, and the phone's mirror already has
+     whatever the last real sync (if any) left it with. */
+  const _isTouchDevice = !window.matchMedia('(hover: hover) and (pointer: fine)').matches;
+
+  function _initMobileLocalOnly() {
+    _buildNav();
+    _renderGlobalFooter();
+    _cache = _readMirror();
+    _applyTheme(_cache);
+    _authoritative = true;
+    _markReady();
+    _fireSync();
+
+    // Still flush a pending debounced write to the mirror on the way out —
+    // purely local, costs nothing, keeps the phone's own edits durable.
+    window.addEventListener('pagehide', () => {
+      if (_writeTimer) { clearTimeout(_writeTimer); _writeTimer = null; _writeToFile(); }
+    });
+  }
+
   function _init() {
     if (document.readyState === 'loading') {
       document.addEventListener('DOMContentLoaded', _init);
       return;
     }
     _injectSharedStyles();
+
+    if (_isTouchDevice) {
+      _initMobileLocalOnly();
+      return;
+    }
+
     _buildNav();
     _createIndicator();
     _renderGlobalFooter();
