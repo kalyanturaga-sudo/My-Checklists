@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+<title>Family Timetables</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Work+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#FBF8F2;
+    --ink:#26241F;
+    --ink-soft:#6B675E;
+    --rule:#DEDACD;
+    --navy:#26364F;
+    --navy-deep:#1B2740;
+
+    --english:#7FA3C7;
+    --maths:#E3A75A;
+    --science:#8EC6C0;
+    --history:#B98B6A;
+    --biology:#8FA876;
+    --chemistry:#C97B6D;
+    --art:#A587B0;
+    --yoga:#D9B96C;
+    --rff:#CE93A0;
+    --hsie:#9CAE85;
+    --drama:#B79FD1;
+    --other:#B9B4A6;
+  }
+
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--paper);
+    color:var(--ink);
+    font-family:'Work Sans', -apple-system, sans-serif;
+    -webkit-font-smoothing:antialiased;
+    padding-bottom:40px;
+  }
+
+  header{
+    padding:28px 20px 20px;
+    border-bottom:1px solid var(--rule);
+  }
+  header .eyebrow{
+    font-size:13px;
+    color:var(--ink-soft);
+    margin:0 0 4px;
+  }
+  header h1{
+    font-family:'Fraunces', serif;
+    font-weight:600;
+    font-size:clamp(26px, 6vw, 34px);
+    margin:0;
+    color:var(--navy-deep);
+    letter-spacing:-0.01em;
+  }
+
+  nav.tabs{
+    display:flex;
+    gap:6px;
+    padding:14px 16px 0;
+    overflow-x:auto;
+    -webkit-overflow-scrolling:touch;
+    scrollbar-width:none;
+  }
+  nav.tabs::-webkit-scrollbar{display:none;}
+  nav.tabs button{
+    flex:0 0 auto;
+    background:transparent;
+    border:none;
+    padding:10px 16px;
+    font-family:'Work Sans', sans-serif;
+    font-size:15px;
+    font-weight:600;
+    color:var(--ink-soft);
+    cursor:pointer;
+    border-bottom:3px solid transparent;
+    white-space:nowrap;
+  }
+  nav.tabs button.active{
+    color:var(--navy-deep);
+    border-bottom-color:var(--navy-deep);
+  }
+  nav.tabs button:focus-visible{
+    outline:2px solid var(--navy);
+    outline-offset:2px;
+    border-radius:4px;
+  }
+
+  main{padding:18px 16px 0;}
+  .panel{display:none;}
+  .panel.active{display:block;}
+
+  .panel-head{
+    display:flex;
+    justify-content:space-between;
+    align-items:baseline;
+    flex-wrap:wrap;
+    gap:6px 16px;
+    margin-bottom:12px;
+  }
+  .panel-head h2{
+    font-family:'Fraunces', serif;
+    font-weight:600;
+    font-size:20px;
+    margin:0;
+    color:var(--navy-deep);
+  }
+  .panel-head .meta{
+    font-size:13px;
+    color:var(--ink-soft);
+  }
+
+  .table-scroll{
+    overflow-x:auto;
+    -webkit-overflow-scrolling:touch;
+    border:1px solid var(--rule);
+    border-radius:10px;
+    background:#fff;
+  }
+  table{
+    border-collapse:collapse;
+    width:100%;
+    min-width:640px;
+    table-layout:fixed;
+  }
+  thead th{
+    position:sticky;
+    top:0;
+    background:var(--navy-deep);
+    color:#F4F1E8;
+    font-weight:600;
+    font-size:13px;
+    padding:10px 8px;
+    text-align:left;
+    z-index:2;
+  }
+  thead th:first-child{
+    width:64px;
+    z-index:3;
+  }
+  tbody th{
+    position:sticky;
+    left:0;
+    background:#F1EEE4;
+    color:var(--ink);
+    font-weight:600;
+    font-size:13px;
+    padding:10px 8px;
+    text-align:left;
+    border-right:1px solid var(--rule);
+    border-bottom:1px solid var(--rule);
+    z-index:1;
+    vertical-align:top;
+  }
+  td{
+    border-bottom:1px solid var(--rule);
+    border-right:1px solid var(--rule);
+    padding:0;
+    vertical-align:top;
+  }
+  td:last-child, th:last-child{border-right:none;}
+
+  .cell{
+    padding:9px 10px;
+    min-height:56px;
+    border-left:4px solid transparent;
+  }
+  .cell .subject{
+    font-weight:600;
+    font-size:13.5px;
+    line-height:1.25;
+    color:var(--ink);
+  }
+  .cell .detail{
+    font-size:11.5px;
+    color:var(--ink-soft);
+    margin-top:2px;
+    line-height:1.3;
+  }
+  .cell.empty{background:#fff;}
+
+  .cell.note{
+    background:#F1EEE4;
+    color:var(--ink-soft);
+    font-style:italic;
+    font-size:12.5px;
+    text-align:center;
+    border-left-color:transparent !important;
+  }
+
+  /* subject color coding */
+  .c-english{background:color-mix(in srgb, var(--english) 22%, white); border-left-color:var(--english);}
+  .c-maths{background:color-mix(in srgb, var(--maths) 22%, white); border-left-color:var(--maths);}
+  .c-science{background:color-mix(in srgb, var(--science) 22%, white); border-left-color:var(--science);}
+  .c-history{background:color-mix(in srgb, var(--history) 22%, white); border-left-color:var(--history);}
+  .c-biology{background:color-mix(in srgb, var(--biology) 22%, white); border-left-color:var(--biology);}
+  .c-chemistry{background:color-mix(in srgb, var(--chemistry) 22%, white); border-left-color:var(--chemistry);}
+  .c-art{background:color-mix(in srgb, var(--art) 22%, white); border-left-color:var(--art);}
+  .c-yoga{background:color-mix(in srgb, var(--yoga) 22%, white); border-left-color:var(--yoga);}
+  .c-rff{background:color-mix(in srgb, var(--rff) 22%, white); border-left-color:var(--rff);}
+  .c-hsie{background:color-mix(in srgb, var(--hsie) 22%, white); border-left-color:var(--hsie);}
+  .c-drama{background:color-mix(in srgb, var(--drama) 22%, white); border-left-color:var(--drama);}
+  .c-other{background:color-mix(in srgb, var(--other) 22%, white); border-left-color:var(--other);}
+
+  .legend{
+    display:flex;
+    flex-wrap:wrap;
+    gap:8px 14px;
+    margin-top:14px;
+    padding:0 2px;
+  }
+  .legend span{
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+    font-size:12px;
+    color:var(--ink-soft);
+  }
+  .legend .swatch{
+    width:10px;height:10px;border-radius:2px;display:inline-block;
+  }
+
+  .hint{
+    font-size:12px;
+    color:var(--ink-soft);
+    margin-top:14px;
+    text-align:center;
+  }
+
+  @media (max-width:480px){
+    header{padding:22px 14px 16px;}
+    main{padding:14px 10px 0;}
+    thead th{font-size:12px; padding:8px 6px;}
+    tbody th{font-size:12px; padding:8px 6px;}
+    .cell{padding:7px 7px; min-height:48px;}
+    .cell .subject{font-size:12.5px;}
+    .cell .detail{font-size:11px;}
+    table{min-width:560px;}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <p class="eyebrow">This week, at a glance</p>
+  <h1>Family Timetables</h1>
+</header>
+
+<nav class="tabs" role="tablist" aria-label="Choose timetable">
+  <button class="tab-btn active" data-panel="esha-a" role="tab" aria-selected="true">Esha — Week A</button>
+  <button class="tab-btn" data-panel="esha-b" role="tab" aria-selected="false">Esha — Week B</button>
+  <button class="tab-btn" data-panel="junior" role="tab" aria-selected="false">5H — Mr Hayman</button>
+</nav>
+
+<main>
+
+  <!-- ESHA WEEK A -->
+  <section class="panel active" id="esha-a">
+    <div class="panel-head">
+      <h2>Esha Turaga</h2>
+      <span class="meta">Week A · Cherrybrook Technology High School</span>
+    </div>
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th>Per.</th><th>Monday</th><th>Tuesday</th><th>Wednesday</th><th>Thursday</th><th>Friday</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <th>0</th>
+            <td><div class="cell empty"></div></td>
+            <td><div class="cell c-english"><div class="subject">Eng. Extension</div><div class="detail">D2.16 · Ms Blenman</div></div></td>
+            <td><div class="cell note">Roll Call</div></td>
+            <td><div class="cell c-english"><div class="subject">Eng. Extension</div><div class="detail">D2.16 · Ms Blenman</div></div></td>
+            <td><div class="cell empty"></div></td>
+          </tr>
+          <tr>
+            <th>1</th>
+            <td><div class="cell c-art"><div class="subject">Visual Arts</div><div class="detail">J2.7 · Ms Jaeger</div></div></td>
+            <td><div class="cell c-art"><div class="subject">Visual Arts</div><div class="detail">J2.7 · Ms Jaeger</div></div></td>
+            <td><div class="cell c-chemistry"><div class="subject">Chemistry</div><div class="detail">G2.9 · Miss Zhu</div></div></td>
+            <td><div class="cell c-biology"><div class="subject">Biology</div><div class="detail">M2.2 · Mrs Thomas</div></div></td>
+            <td><div class="cell c-maths"><div class="subject">Mathematics Adv.</div><div class="detail">A1.8 · Mrs Kaur</div></div></td>
+          </tr>
+          <tr>
+            <th>2</th>
+            <td><div class="cell c-chemistry"><div class="subject">Chemistry</div><div class="detail">G2.9 · Miss Zhu</div></div></td>
+            <td><div class="cell c-art"><div class="subject">Visual Arts</div><div class="detail">J2.7 · Ms Jaeger</div></div></td>
+            <td><div class="cell c-chemistry"><div class="subject">Chemistry</div><div class="detail">G2.9 · Miss Zhu</div></div></td>
+            <td><div class="cell c-biology"><div class="subject">Biology</div><div class="detail">M2.2 · Mrs Thomas</div></div></td>
+            <td><div class="cell c-maths"><div class="subject">Mathematics Adv.</div><div class="detail">A1.8 · Mrs Kaur</div></div></td>
+          </tr>
+          <tr>
+            <th>3</th>
+            <td><div class="cell c-maths"><div class="subject">Mathematics Adv.</div><div class="detail">A1.8 · Mrs Kaur</div></div></td>
+            <td><div class="cell c-biology"><div class="subject">Biology</div><div class="detail">M2.2 · Mrs Thomas</div></div></td>
+            <td><div class="cell c-english"><div class="subject">English Advanced</div><div class="detail">D2.16 · Ms Blenman</div></div></td>
+            <td><div class="cell c-chemistry"><div class="subject">Chemistry</div><div class="detail">G2.9 · Miss Zhu</div></div></td>
+            <td><div class="cell c-history"><div class="subject">Ancient History</div><div class="detail">A2.10 · Miss Adamou</div></div></td>
+          </tr>
+          <tr>
+            <th>4</th>
+            <td><div class="cell c-english"><div class="subject">English Advanced</div><div class="detail">D2.16 · Mrs Mackay</div></div></td>
+            <td><div class="cell c-maths"><div class="subject">Mathematics Adv.</div><div class="detail">A1.8 · Mrs Kaur</div></div></td>
+            <td><div class="cell c-english"><div class="subject">English Advanced</div><div class="detail">D2.16 · Ms Blenman</div></div></td>
+            <td><div class="cell c-art"><div class="subject">Visual Arts</div><div class="detail">J2.7 · Ms Jaeger</div></div></td>
+            <td><div class="cell c-history"><div class="subject">Ancient History</div><div class="detail">A2.10 · Miss Adamou</div></div></td>
+          </tr>
+          <tr>
+            <th></th>
+            <td colspan="5"><div class="cell note">Lunch</div></td>
+          </tr>
+          <tr>
+            <th>5</th>
+            <td><div class="cell c-history"><div class="subject">Ancient History</div><div class="detail">A2.10 · Miss Adamou</div></div></td>
+            <td><div class="cell c-english"><div class="subject">English Advanced</div><div class="detail">D2.16 · Ms Blenman</div></div></td>
+            <td><div class="cell c-biology"><div class="subject">Biology</div><div class="detail">M2.2 · Mrs Thomas</div></div></td>
+            <td><div class="cell c-yoga"><div class="subject">Intra Yoga</div><div class="detail">J2.2 · Miss Panajic</div></div></td>
+            <td><div class="cell c-art"><div class="subject">Visual Arts</div><div class="detail">J2.7 · Ms Jaeger</div></div></td>
+          </tr>
+          <tr>
+            <th>6</th>
+            <td><div class="cell c-biology"><div class="subject">Biology</div><div class="detail">M2.2 · Mrs Thomas</div></div></td>
+            <td><div class="cell empty"></div></td>
+            <td><div class="cell c-history"><div class="subject">Ancient History</div><div class="detail">A2.10 · Miss Adamou</div></div></td>
+            <td><div class="cell c-yoga"><div class="subject">Intra Yoga</div><div class="detail">J2.2 · Miss Panajic</div></div></td>
+            <td><div class="cell c-english"><div class="subject">English Advanced</div><div class="detail">D2.16 · Ms Blenman</div></div></td>
+          </tr>
+          <tr>
+            <th>7</th>
+            <td><div class="cell empty"></div></td>
+            <td><div class="cell empty"></div></td>
+            <td><div class="cell empty"></div></td>
+            <td><div class="cell empty"></div></td>
+            <td><div class="cell empty"></div></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="legend" id="legend-esha"></div>
+  </section>
+
+  <!-- ESHA WEEK B -->
+  <section class="panel" id="esha-b">
+    <div class="panel-head">
+      <h2>Esha Turaga</h2>
+      <span class="meta">Week B · Cherrybrook Technology High School</span>
+    </div>
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th>Per.</th><th>Monday</th><th>Tuesday</th><th>Wednesday</th><th>Thursday</th><th>Friday</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <th>0</th>
+            <td><div class="cell empty"></div></td>
+            <td><div class="cell c-english"><div class="subject">Eng. Extension</div><div class="detail">D2.16 · Ms Blenman</div></div></td>
+            <td><div class="cell note">Roll Call</div></td>
+            <td><div class="cell c-english"><div class="subject">Eng. Extension</div><div class="detail">D2.16 · Ms Blenman</div></div></td>
+            <td><div class="cell empty"></div></td>
+          </tr>
+          <tr>
+            <th>1</th>
+            <td><div class="cell c-history"><div class="subject">Ancient History</div><div class="detail">A2.10 · Miss Adamou</div></div></td>
+            <td><div class="cell c-maths"><div class="subject">Mathematics Adv.</div><div class="detail">A1.8 · Mrs Kaur</div></div></td>
+            <td><div class="cell c-english"><div class="subject">English Advanced</div><div class="detail">D2.16 · Ms Blenman</div></div></td>
+            <td><div class="cell c-chemistry"><div class="subject">Chemistry</div><div class="detail">G2.9 · Miss Zhu</div></div></td>
+            <td><div class="cell c-biology"><div class="subject">Biology</div><div class="detail">M2.2 · Mrs Thomas</div></div></td>
+          </tr>
+          <tr>
+            <th>2</th>
+            <td><div class="cell c-biology"><div class="subject">Biology</div><div class="detail">M2.2 · Mrs Thomas</div></div></td>
+            <td><div class="cell c-maths"><div class="subject">Mathematics Adv.</div><div class="detail">A1.8 · Mrs Kaur</div></div></td>
+            <td><div class="cell c-english"><div class="subject">English Advanced</div><div class="detail">D2.16 · Ms Blenman</div></div></td>
+            <td><div class="cell c-chemistry"><div class="subject">Chemistry</div><div class="detail">G2.9 · Miss Zhu</div></div></td>
+            <td><div class="cell c-biology"><div class="subject">Biology</div><div class="detail">M2.2 · Mrs Thomas</div></div></td>
+          </tr>
+          <tr>
+            <th>3</th>
+            <td><div class="cell c-english"><div class="subject">English Advanced</div><div class="detail">D2.16 · Mrs Mackay</div></div></td>
+            <td><div class="cell c-english"><div class="subject">English Advanced</div><div class="detail">D2.16 · Ms Blenman</div></div></td>
+            <td><div class="cell c-history"><div class="subject">Ancient History</div><div class="detail">A2.10 · Miss Adamou</div></div></td>
+            <td><div class="cell c-maths"><div class="subject">Mathematics Adv.</div><div class="detail">A1.8 · Mrs Kaur</div></div></td>
+            <td><div class="cell c-art"><div class="subject">Visual Arts</div><div class="detail">J2.7 · Ms Jaeger</div></div></td>
+          </tr>
+          <tr>
+            <th>4</th>
+            <td><div class="cell c-chemistry"><div class="subject">Chemistry</div><div class="detail">G2.9 · Miss Zhu</div></div></td>
+            <td><div class="cell c-history"><div class="subject">Ancient History</div><div class="detail">A2.10 · Miss Adamou</div></div></td>
+            <td><div class="cell c-history"><div class="subject">Ancient History</div><div class="detail">A2.10 · Miss Adamou</div></div></td>
+            <td><div class="cell c-biology"><div class="subject">Biology</div><div class="detail">M2.2 · Mrs Thomas</div></div></td>
+            <td><div class="cell c-art"><div class="subject">Visual Arts</div><div class="detail">J2.7 · Ms Jaeger</div></div></td>
+          </tr>
+          <tr>
+            <th></th>
+            <td colspan="5"><div class="cell note">Lunch</div></td>
+          </tr>
+          <tr>
+            <th>5</th>
+            <td><div class="cell c-maths"><div class="subject">Mathematics Adv.</div><div class="detail">A1.8 · Mrs Kaur</div></div></td>
+            <td><div class="cell c-art"><div class="subject">Visual Arts</div><div class="detail">J2.7 · Ms Jaeger</div></div></td>
+            <td><div class="cell c-chemistry"><div class="subject">Chemistry</div><div class="detail">G2.9 · Miss Zhu</div></div></td>
+            <td><div class="cell c-yoga"><div class="subject">Intra Yoga</div><div class="detail">J2.2 · Miss Panajic</div></div></td>
+            <td><div class="cell c-history"><div class="subject">Ancient History</div><div class="detail">A2.10 · Miss Adamou</div></div></td>
+          </tr>
+          <tr>
+            <th>6</th>
+            <td><div class="cell c-art"><div class="subject">Visual Arts</div><div class="detail">J2.7 · Ms Jaeger</div></div></td>
+            <td><div class="cell empty"></div></td>
+            <td><div class="cell c-maths"><div class="subject">Mathematics Adv.</div><div class="detail">A1.8 · Mrs Kaur</div></div></td>
+            <td><div class="cell c-yoga"><div class="subject">Intra Yoga</div><div class="detail">J2.2 · Miss Panajic</div></div></td>
+            <td><div class="cell c-chemistry"><div class="subject">Chemistry</div><div class="detail">G2.9 · Miss Zhu</div></div></td>
+          </tr>
+          <tr>
+            <th>7</th>
+            <td><div class="cell empty"></div></td>
+            <td><div class="cell empty"></div></td>
+            <td><div class="cell empty"></div></td>
+            <td><div class="cell empty"></div></td>
+            <td><div class="cell empty"></div></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- JUNIOR / 5H -->
+  <section class="panel" id="junior">
+    <div class="panel-head">
+      <h2>5H</h2>
+      <span class="meta">Term 3 2026 · Mr Hayman</span>
+    </div>
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th>Time</th><th>Monday</th><th>Tuesday</th><th>Wednesday</th><th>Thursday</th><th>Friday</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <th>8:55–9:35</th>
+            <td><div class="cell c-english"><div class="subject">English</div><div class="detail">Spelling</div></div></td>
+            <td><div class="cell c-english"><div class="subject">English</div><div class="detail">Spelling</div></div></td>
+            <td><div class="cell c-english"><div class="subject">English</div><div class="detail">Spelling</div></div></td>
+            <td><div class="cell c-english"><div class="subject">English</div><div class="detail">Spelling</div></div></td>
+            <td><div class="cell c-science"><div class="subject">Science</div></div></td>
+          </tr>
+          <tr>
+            <th>9:35–10:15</th>
+            <td><div class="cell c-english"><div class="subject">English</div><div class="detail">Reading / Writing</div></div></td>
+            <td><div class="cell c-english"><div class="subject">English</div><div class="detail">Reading / Writing</div></div></td>
+            <td><div class="cell c-english"><div class="subject">English</div><div class="detail">Reading / Writing</div></div></td>
+            <td><div class="cell c-english"><div class="subject">English</div><div class="detail">Reading / Writing</div></div></td>
+            <td><div class="cell c-science"><div class="subject">Science</div></div></td>
+          </tr>
+          <tr>
+            <th>10:15–10:55</th>
+            <td><div class="cell c-maths"><div class="subject">Maths</div></div></td>
+            <td><div class="cell c-maths"><div class="subject">Maths</div></div></td>
+            <td><div class="cell c-english"><div class="subject">English</div><div class="detail">Writing</div></div></td>
+            <td><div class="cell c-english"><div class="subject">English</div><div class="detail">Writing</div></div></td>
+            <td><div class="cell c-english"><div class="subject">English</div><div class="detail">Speaking + Listening</div></div></td>
+          </tr>
+          <tr>
+            <th></th>
+            <td colspan="5"><div class="cell note">Recess</div></td>
+          </tr>
+          <tr>
+            <th>11:15–11:55</th>
+            <td><div class="cell c-rff"><div class="subject">RFF</div><div class="detail">Sci/Tech · Mrs Leroy</div></div></td>
+            <td><div class="cell c-maths"><div class="subject">Maths</div></div></td>
+            <td><div class="cell c-maths"><div class="subject">Maths</div></div></td>
+            <td><div class="cell c-maths"><div class="subject">Maths</div></div></td>
+            <td><div class="cell c-maths"><div class="subject">Maths</div></div></td>
+          </tr>
+          <tr>
+            <th>11:55–12:35</th>
+            <td><div class="cell c-rff"><div class="subject">RFF Mandarin</div><div class="detail">Mrs Teo</div></div></td>
+            <td><div class="cell c-rff"><div class="subject">Scripture</div><div class="detail">@ 12</div></div></td>
+            <td><div class="cell c-maths"><div class="subject">Maths</div></div></td>
+            <td><div class="cell c-maths"><div class="subject">Maths</div></div></td>
+            <td><div class="cell empty"></div></td>
+          </tr>
+          <tr>
+            <th></th>
+            <td colspan="5"><div class="cell note">Lunch</div></td>
+          </tr>
+          <tr>
+            <th>1:25–2:05</th>
+            <td><div class="cell c-rff"><div class="subject">RFF Library</div><div class="detail">Mrs Chapman</div></div></td>
+            <td><div class="cell c-hsie"><div class="subject">HSIE</div><div class="detail">Geography</div></div></td>
+            <td><div class="cell c-rff"><div class="subject">PE</div><div class="detail">Class Sport</div></div></td>
+            <td><div class="cell c-hsie"><div class="subject">HSIE</div><div class="detail">Geography</div></div></td>
+            <td><div class="cell c-rff"><div class="subject">PDHPE</div><div class="detail">PSSA / Sport</div></div></td>
+          </tr>
+          <tr>
+            <th>2:05–2:50</th>
+            <td><div class="cell c-other"><div class="subject">PDH</div></div></td>
+            <td><div class="cell empty"></div></td>
+            <td><div class="cell c-rff"><div class="subject">PE</div><div class="detail">Class Sport</div></div></td>
+            <td><div class="cell c-drama"><div class="subject">Creative Arts</div><div class="detail">Drama</div></div></td>
+            <td><div class="cell empty"></div></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="legend">
+      <span><i class="swatch" style="background:var(--english)"></i>English</span>
+      <span><i class="swatch" style="background:var(--maths)"></i>Maths</span>
+      <span><i class="swatch" style="background:var(--science)"></i>Science</span>
+      <span><i class="swatch" style="background:var(--rff)"></i>RFF / PE / PDHPE</span>
+      <span><i class="swatch" style="background:var(--hsie)"></i>HSIE</span>
+      <span><i class="swatch" style="background:var(--drama)"></i>Drama / Other</span>
+    </div>
+  </section>
+
+  <p class="hint">Swipe tables sideways on a phone to see the rest of the week.</p>
+</main>
+
+<script>
+  const buttons = document.querySelectorAll('.tab-btn');
+  const panels = document.querySelectorAll('.panel');
+  buttons.forEach(btn => {
+    btn.addEventListener('click', () => {
+      buttons.forEach(b => { b.classList.remove('active'); b.setAttribute('aria-selected','false'); });
+      panels.forEach(p => p.classList.remove('active'));
+      btn.classList.add('active');
+      btn.setAttribute('aria-selected','true');
+      document.getElementById(btn.dataset.panel).classList.add('active');
+    });
+  });
+
+  // build legend for Esha panels dynamically to keep markup lighter
+  const eshaLegendData = [
+    ['English','--english'], ['Mathematics Adv.','--maths'], ['Ancient History','--history'],
+    ['Biology','--biology'], ['Chemistry','--chemistry'], ['Visual Arts','--art'], ['Intra Yoga','--yoga']
+  ];
+  const legendEl = document.getElementById('legend-esha');
+  eshaLegendData.forEach(([label, varName]) => {
+    const span = document.createElement('span');
+    const sw = document.createElement('i');
+    sw.className = 'swatch';
+    sw.style.background = `var(${varName})`;
+    span.appendChild(sw);
+    span.appendChild(document.createTextNode(label));
+    legendEl.appendChild(span);
+  });
+</script>
+
+</body>
+</html>
