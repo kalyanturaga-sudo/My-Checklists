@@ -28,6 +28,12 @@
     --hsie:#9CAE85;
     --drama:#B79FD1;
     --other:#B9B4A6;
+
+    --birthday:#CE93A0;
+    --s6day:#B98B6A;
+    --swim:#7FA3C7;
+    --piano:#A587B0;
+    --taekwondo:#C97B6D;
   }
 
   *{box-sizing:border-box;}
@@ -231,6 +237,75 @@
     text-align:center;
   }
 
+  /* calendar */
+  .cal-grid{
+    display:grid;
+    grid-template-columns:repeat(7,1fr);
+    gap:1px;
+    background:var(--rule);
+    border:1px solid var(--rule);
+    border-radius:10px;
+    overflow:hidden;
+  }
+  .cal-dow{
+    background:var(--navy-deep);
+    color:#F4F1E8;
+    font-size:11.5px;
+    font-weight:600;
+    text-align:center;
+    padding:8px 4px;
+    text-transform:uppercase;
+    letter-spacing:.03em;
+  }
+  .cal-day{
+    background:#fff;
+    min-height:96px;
+    padding:6px 6px 8px;
+    display:flex;
+    flex-direction:column;
+    gap:4px;
+  }
+  .cal-day.pad{
+    background:#F7F5EF;
+  }
+  .cal-day.pad .cal-num{
+    color:#C8C3B5;
+  }
+  .cal-num{
+    font-family:'Fraunces', serif;
+    font-weight:600;
+    font-size:14px;
+    color:var(--ink);
+  }
+  .cal-chip{
+    font-size:10.5px;
+    line-height:1.25;
+    font-weight:600;
+    padding:3px 5px;
+    border-radius:5px;
+    border-left:3px solid transparent;
+    color:var(--ink);
+  }
+  .cal-chip .cal-time{
+    display:block;
+    font-weight:400;
+    color:var(--ink-soft);
+    font-size:9.5px;
+  }
+  .chip-birthday{background:color-mix(in srgb, var(--birthday) 28%, white); border-left-color:var(--birthday);}
+  .chip-s6day{background:color-mix(in srgb, var(--s6day) 28%, white); border-left-color:var(--s6day);}
+  .chip-swim{background:color-mix(in srgb, var(--swim) 28%, white); border-left-color:var(--swim);}
+  .chip-piano{background:color-mix(in srgb, var(--piano) 28%, white); border-left-color:var(--piano);}
+  .chip-taekwondo{background:color-mix(in srgb, var(--taekwondo) 28%, white); border-left-color:var(--taekwondo);}
+
+  @media (max-width:480px){
+    .cal-day{min-height:74px; padding:5px 4px 6px;}
+    .cal-num{font-size:12.5px;}
+    .cal-chip{font-size:9.5px; padding:2px 4px;}
+    .cal-chip .cal-time{font-size:8.5px;}
+    .cal-dow{font-size:10px; padding:6px 2px;}
+  }
+
   @media (max-width:480px){
     header{padding:22px 14px 16px;}
     main{padding:14px 10px 0;}
@@ -251,15 +326,74 @@
 </header>
 
 <nav class="tabs" role="tablist" aria-label="Choose timetable">
-  <button class="tab-btn active" data-panel="esha-a" role="tab" aria-selected="true">Esha — Week A</button>
+  <button class="tab-btn active" data-panel="calendar" role="tab" aria-selected="true">September</button>
+  <button class="tab-btn" data-panel="junior" role="tab" aria-selected="false">Rohan</button>
+  <button class="tab-btn" data-panel="esha-a" role="tab" aria-selected="false">Esha — Week A</button>
   <button class="tab-btn" data-panel="esha-b" role="tab" aria-selected="false">Esha — Week B</button>
-  <button class="tab-btn" data-panel="junior" role="tab" aria-selected="false">5H — Mr Hayman</button>
 </nav>
 
 <main>
 
+  <!-- SEPTEMBER CALENDAR -->
+  <section class="panel active" id="calendar">
+    <div class="panel-head">
+      <h2>September 2026</h2>
+      <span class="meta">Week starts Monday</span>
+    </div>
+    <div class="cal-grid">
+      <div class="cal-dow">Mon</div><div class="cal-dow">Tue</div><div class="cal-dow">Wed</div><div class="cal-dow">Thu</div><div class="cal-dow">Fri</div><div class="cal-dow">Sat</div><div class="cal-dow">Sun</div>
+
+      <div class="cal-day pad"><div class="cal-num">31</div></div>
+      <div class="cal-day"><div class="cal-num">1</div><div class="cal-chip chip-piano">Piano<span class="cal-time">5:30–6:00 PM</span></div></div>
+      <div class="cal-day"><div class="cal-num">2</div><div class="cal-chip chip-taekwondo">Taekwondo<span class="cal-time">5:30–6:20 PM</span></div></div>
+      <div class="cal-day"><div class="cal-num">3</div><div class="cal-chip chip-taekwondo">Taekwondo<span class="cal-time">5:30–6:20 PM</span></div></div>
+      <div class="cal-day"><div class="cal-num">4</div></div>
+      <div class="cal-day"><div class="cal-num">5</div></div>
+      <div class="cal-day"><div class="cal-num">6</div></div>
+
+      <div class="cal-day"><div class="cal-num">7</div><div class="cal-chip chip-swim">Rohan — Swimming<span class="cal-time">5:30–6:00 PM</span></div></div>
+      <div class="cal-day"><div class="cal-num">8</div><div class="cal-chip chip-piano">Piano<span class="cal-time">5:30–6:00 PM</span></div></div>
+      <div class="cal-day"><div class="cal-num">9</div><div class="cal-chip chip-taekwondo">Taekwondo<span class="cal-time">5:30–6:20 PM</span></div></div>
+      <div class="cal-day"><div class="cal-num">10</div><div class="cal-chip chip-taekwondo">Taekwondo<span class="cal-time">5:30–6:20 PM</span></div></div>
+      <div class="cal-day"><div class="cal-num">11</div></div>
+      <div class="cal-day"><div class="cal-num">12</div></div>
+      <div class="cal-day"><div class="cal-num">13</div><div class="cal-chip chip-birthday">Kalyan's Birthday<span class="cal-time">3:00–5:00 PM · Zone Bowling</span></div><div class="cal-chip chip-birthday">Jayden's Birthday<span class="cal-time">1:30–4:00 PM · 360 Action</span></div></div>
+
+      <div class="cal-day"><div class="cal-num">14</div><div class="cal-chip chip-swim">Rohan — Swimming<span class="cal-time">5:30–6:00 PM</span></div></div>
+      <div class="cal-day"><div class="cal-num">15</div><div class="cal-chip chip-piano">Piano<span class="cal-time">5:30–6:00 PM</span></div></div>
+      <div class="cal-day"><div class="cal-num">16</div><div class="cal-chip chip-taekwondo">Taekwondo<span class="cal-time">5:30–6:20 PM</span></div></div>
+      <div class="cal-day"><div class="cal-num">17</div><div class="cal-chip chip-taekwondo">Taekwondo<span class="cal-time">5:30–6:20 PM</span></div></div>
+      <div class="cal-day"><div class="cal-num">18</div></div>
+      <div class="cal-day"><div class="cal-num">19</div><div class="cal-chip chip-s6day">Kalyan — S6 Day</div><div class="cal-chip chip-birthday">Darasime's Birthday<span class="cal-time">4:40–5:30 PM · 360 Action</span></div></div>
+      <div class="cal-day"><div class="cal-num">20</div><div class="cal-chip chip-s6day">Kalyan — S6 Day</div></div>
+
+      <div class="cal-day"><div class="cal-num">21</div><div class="cal-chip chip-swim">Rohan — Swimming<span class="cal-time">5:30–6:00 PM</span></div></div>
+      <div class="cal-day"><div class="cal-num">22</div><div class="cal-chip chip-piano">Piano<span class="cal-time">5:30–6:00 PM</span></div></div>
+      <div class="cal-day"><div class="cal-num">23</div><div class="cal-chip chip-taekwondo">Taekwondo<span class="cal-time">5:30–6:20 PM</span></div></div>
+      <div class="cal-day"><div class="cal-num">24</div><div class="cal-chip chip-taekwondo">Taekwondo<span class="cal-time">5:30–6:20 PM</span></div></div>
+      <div class="cal-day"><div class="cal-num">25</div></div>
+      <div class="cal-day"><div class="cal-num">26</div><div class="cal-chip chip-s6day">Kalyan — S6 Day</div></div>
+      <div class="cal-day"><div class="cal-num">27</div><div class="cal-chip chip-s6day">Kalyan — S6 Day</div></div>
+
+      <div class="cal-day"><div class="cal-num">28</div><div class="cal-chip chip-swim">Rohan — Swimming<span class="cal-time">5:30–6:00 PM</span></div></div>
+      <div class="cal-day"><div class="cal-num">29</div><div class="cal-chip chip-piano">Piano<span class="cal-time">5:30–6:00 PM</span></div></div>
+      <div class="cal-day"><div class="cal-num">30</div><div class="cal-chip chip-taekwondo">Taekwondo<span class="cal-time">5:30–6:20 PM</span></div></div>
+      <div class="cal-day pad"><div class="cal-num">1</div></div>
+      <div class="cal-day pad"><div class="cal-num">2</div></div>
+      <div class="cal-day pad"><div class="cal-num">3</div></div>
+      <div class="cal-day pad"><div class="cal-num">4</div></div>
+    </div>
+    <div class="legend">
+      <span><i class="swatch" style="background:var(--birthday)"></i>Birthday</span>
+      <span><i class="swatch" style="background:var(--s6day)"></i>S6 Day</span>
+      <span><i class="swatch" style="background:var(--swim)"></i>Swimming</span>
+      <span><i class="swatch" style="background:var(--piano)"></i>Piano</span>
+      <span><i class="swatch" style="background:var(--taekwondo)"></i>Taekwondo</span>
+    </div>
+  </section>
+
   <!-- ESHA WEEK A -->
-  <section class="panel active" id="esha-a">
+  <section class="panel" id="esha-a">
     <div class="panel-head">
       <h2>Esha Turaga</h2>
       <span class="meta">Week A · Cherrybrook Technology High School</span>
