@@ -127,14 +127,73 @@
 
   li.section-header .sec-icon { font-size: 14px; }
 
-  li.section-header .sec-progress {
+  li.section-header .sec-label { cursor: default; }
+  body.is-desktop li.section-header .sec-label { cursor: text; }
+
+  li.section-header .sec-right {
     margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  li.section-header .sec-progress {
     font-size: 11px;
     font-weight: 500;
     text-transform: none;
     letter-spacing: normal;
     font-variant-numeric: tabular-nums;
   }
+
+  .sec-del {
+    display: none;
+    width: 20px;
+    height: 20px;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    background: none;
+    color: var(--text-dim);
+    font-size: 15px;
+    line-height: 1;
+    border-radius: 6px;
+    cursor: pointer;
+    text-transform: none;
+  }
+
+  body.is-desktop .sec-del { display: flex; }
+  .sec-del:hover { background: #ef444422; color: #ef4444; }
+
+  .add-category-row {
+    display: none;
+    justify-content: center;
+    margin-top: 14px;
+  }
+
+  body.is-desktop .add-category-row { display: flex; }
+
+  .add-category-btn {
+    background: none;
+    border: 1px dashed var(--card-border);
+    color: var(--text-dim);
+    font-size: 12px;
+    padding: 7px 14px;
+    border-radius: 999px;
+    cursor: pointer;
+  }
+
+  .add-category-btn:hover { color: var(--text); border-color: var(--text-dim); }
+
+  .readonly-note {
+    display: none;
+    text-align: center;
+    color: var(--text-dim);
+    font-size: 11px;
+    margin: 2px 0 0;
+  }
+
+  body:not(.is-desktop) .readonly-note { display: block; }
 
   li.task {
     display: flex;
@@ -388,7 +447,12 @@
     <button id="addBtn" aria-label="Add task">+</button>
   </div>
 
-  <p class="hint">&#9656; to make subtask &middot; drag &#8942;&#8942; to reorder &middot; double-click text to edit &middot; &times; to delete &middot; + to add &middot; syncs to every device</p>
+  <div class="add-category-row">
+    <button class="add-category-btn" id="addCategoryBtn">+ Category</button>
+  </div>
+
+  <p class="hint">&#9656; to make subtask &middot; drag &#8942;&#8942; to reorder &middot; double-click text to rename &middot; &times; to delete &middot; syncs to every device via Google Drive</p>
+  <p class="readonly-note">Checklist layout is edited on the web version &middot; tap a row here to check it off</p>
 
   <button class="reset" id="resetBtn">Reset checklist</button>
 
@@ -464,11 +528,19 @@
     { id: 'fruits',      type: 'task',   label: 'Fruits', sub: false },
   ];
 
-  // Keys stored in the shared Drive file (my-checklists-data.json).
-  // Items (labels/order) are shared indefinitely. Done-state is keyed by
-  // today's date, so it resets automatically each day on every device.
-  // Deliberately separate from Checklists.html's FT_ROLE_CHECKLIST_V1 keys
-  // so this page and the main app don't fight over the same done-state.
+  // The checklist LAYOUT (categories + tasks) lives in the shared Drive
+  // file (my-checklists-data.json) and is the source of truth for every
+  // device. Only the web version (a real mouse/trackpad — isDesktop
+  // below) is allowed to write it: add/rename/delete/reorder tasks and
+  // categories. The mobile version (iPhone/iPad) only ever READS this
+  // key from Drive and re-renders whenever it changes elsewhere.
+  //
+  // Done-state (which boxes are ticked) is NOT written to Drive at all —
+  // it's local to each device's browser (localStorage), keyed by today's
+  // date so it clears itself automatically every day. That's deliberate:
+  // it's today's to-do progress, not something that needs to follow you
+  // between devices, and keeping it local means tapping a box on the
+  // phone never touches the network or the shared file.
   const ITEMS_KEY = 'ft-checklist-items-v1';
   const doneKeyForToday = () => 'ft-checklist-done-' + new Date().toISOString().slice(0, 10);
 
@@ -487,12 +559,25 @@
   const barFill = document.getElementById('barFill');
   let dragId = null;
 
+  // Layout writes are desktop-only — the mobile UI never exposes the
+  // controls that call this, but the guard makes it a hard rule rather
+  // than just a hidden button.
   async function saveItems() {
+    if (!isDesktop) return;
     await OT.set(ITEMS_KEY, JSON.stringify(items));
   }
 
-  async function saveDone() {
-    await OT.set(doneKeyForToday(), JSON.stringify(doneState));
+  function loadDone() {
+    try {
+      const raw = localStorage.getItem(doneKeyForToday());
+      doneState = raw ? JSON.parse(raw) : {};
+    } catch (e) { doneState = {}; }
+  }
+
+  function saveDone() {
+    try {
+      localStorage.setItem(doneKeyForToday(), JSON.stringify(doneState));
+    } catch (e) {}
   }
 
   function render() {
@@ -503,9 +588,39 @@
         const li = document.createElement('li');
         li.className = 'section-header';
         li.dataset.id = item.id;
-        li.innerHTML =
-          '<span class="sec-icon">' + (item.icon || '') + '</span><span>' + escapeHtml(item.label) + '</span>' +
-          (tasksInSection.total ? '<span class="sec-progress">' + tasksInSection.done + '/' + tasksInSection.total + '</span>' : '');
+
+        const iconSpan = document.createElement('span');
+        iconSpan.className = 'sec-icon';
+        iconSpan.textContent = item.icon || '';
+        li.appendChild(iconSpan);
+
+        const labelSpan = document.createElement('span');
+        labelSpan.className = 'sec-label';
+        labelSpan.textContent = item.label;
+        if (isDesktop) labelSpan.addEventListener('dblclick', () => startEditHeader(labelSpan, item));
+        li.appendChild(labelSpan);
+
+        const right = document.createElement('span');
+        right.className = 'sec-right';
+
+        if (tasksInSection.total) {
+          const prog = document.createElement('span');
+          prog.className = 'sec-progress';
+          prog.textContent = tasksInSection.done + '/' + tasksInSection.total;
+          right.appendChild(prog);
+        }
+
+        const del = document.createElement('button');
+        del.className = 'sec-del';
+        del.setAttribute('aria-label', 'Delete category');
+        del.textContent = '\u00D7';
+        del.addEventListener('click', e => {
+          e.stopPropagation();
+          deleteCategory(item.id);
+        });
+        right.appendChild(del);
+
+        li.appendChild(right);
 
         if (isDesktop) {
           li.setAttribute('draggable', 'true');
@@ -633,10 +748,6 @@
     return { total, done };
   }
 
-  function escapeHtml(s) {
-    return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-  }
-
   function startEdit(label, item) {
     const input = document.createElement('input');
     input.type = 'text';
@@ -658,6 +769,59 @@
       if (e.key === 'Escape') { e.preventDefault(); render(); }
     });
     input.addEventListener('blur', commit);
+  }
+
+  function startEditHeader(labelSpan, item) {
+    if (!isDesktop) return;
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.className = 'label-input';
+    input.value = item.label;
+    labelSpan.replaceWith(input);
+    input.focus();
+    input.select();
+
+    function commit() {
+      const val = input.value.trim();
+      if (val) item.label = val;
+      saveItems();
+      render();
+    }
+
+    input.addEventListener('keydown', e => {
+      if (e.key === 'Enter') { e.preventDefault(); commit(); }
+      if (e.key === 'Escape') { e.preventDefault(); render(); }
+    });
+    input.addEventListener('blur', commit);
+  }
+
+  function deleteCategory(headerId) {
+    if (!isDesktop) return;
+    const headerIdx = items.findIndex(i => i.id === headerId);
+    if (headerIdx === -1) return;
+    const header = items[headerIdx];
+    if (!confirm('Delete "' + header.label + '" and all its tasks?')) return;
+
+    let endIdx = headerIdx + 1;
+    while (endIdx < items.length && items[endIdx].type !== 'header') endIdx++;
+
+    const removed = items.slice(headerIdx, endIdx);
+    removed.forEach(i => delete doneState[i.id]);
+    items.splice(headerIdx, endIdx - headerIdx);
+
+    saveItems();
+    saveDone();
+    render();
+  }
+
+  function addCategory() {
+    if (!isDesktop) return;
+    const label = prompt('Name for new category:', 'New Category');
+    if (!label || !label.trim()) return;
+    const id = 'h-custom-' + Date.now().toString(36);
+    items.push({ id, type: 'header', icon: '📋', label: label.trim() });
+    saveItems();
+    render();
   }
 
   function toggleDone(id) {
@@ -695,21 +859,24 @@
   addBtn.addEventListener('click', addTask);
   addInput.addEventListener('keydown', e => { if (e.key === 'Enter') addTask(); });
 
+  document.getElementById('addCategoryBtn').addEventListener('click', addCategory);
+
+  // Local done-state loads instantly, no network needed.
+  loadDone();
+
   async function loadFromDrive() {
     const savedItems = await OT.get(ITEMS_KEY);
-    const savedDone = await OT.get(doneKeyForToday());
 
     if (savedItems) {
       try {
         items = JSON.parse(savedItems);
         items.forEach(i => { if (i.type !== 'header' && typeof i.sub !== 'boolean') i.sub = false; });
       } catch (e) {}
-    } else {
-      // First run ever: seed Drive with the defaults so every device starts the same.
+    } else if (isDesktop) {
+      // First run ever: seed Drive with the defaults so every device starts
+      // the same. Only the web version is allowed to write this key —
+      // mobile just waits and re-renders once the web version has saved.
       await saveItems();
-    }
-    if (savedDone) {
-      try { doneState = JSON.parse(savedDone); } catch (e) {}
     }
 
     loadingNote.style.display = 'none';
